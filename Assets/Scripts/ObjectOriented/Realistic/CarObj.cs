@@ -14,10 +14,15 @@ public class CarObj : MonoBehaviour
     public WheelObj[] wheels;
     public WheelObj[] poweredWheels;
 
+    [Header("BrakeInput Parameters")]
+    public float maxBrakeTorque;
+    public float frontBrakeBias;
+
     [Header("Input")]
     public float Throttle;
     public bool ThrottleLock;
-    public float Brake;
+    public float BrakeInput;
+    public float eBrakeInput;
     public float steeringInput;
 
     [Header("Output")]
@@ -25,6 +30,22 @@ public class CarObj : MonoBehaviour
     public float torqueToWheel = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
 
+    void Start()
+    {
+        frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1);
+        for (int w = 0; w < wheels.Length; w++)
+        {
+            if (w < wheels.Length / 2)
+            {
+                wheels[w].brakeBias = frontBrakeBias;
+            }
+            else
+            {
+                wheels[w].brakeBias = 1 - frontBrakeBias;
+            }
+        }
+    }
+    
     void FixedUpdate()
     {
         // Handle Input Here:
@@ -38,6 +59,7 @@ public class CarObj : MonoBehaviour
         torqueToWheel = Tc * gearBox.get_ratio() * driveTrain.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
         for (int i = 0; i < wheels.Length; i++)
         {
+            wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque);
             if (poweredWheels.Contains(wheels[i])) // We apply the torque to the powered wheels (Wheels that are directly driven by engine.)
             {
                 wheels[i].applyTorqueToWheels(torqueToWheel); 
@@ -64,6 +86,14 @@ public class CarObj : MonoBehaviour
 			{
 				Throttle = 0;
 			}*/
+            if (Input.GetKey(KeyCode.Space))
+            {
+                eBrakeInput = 1;
+            }
+            else
+            {
+                eBrakeInput = 0;
+            }
             if (Input.GetKeyDown(KeyCode.T))
             {
                 ThrottleLock = !ThrottleLock;
@@ -85,11 +115,11 @@ public class CarObj : MonoBehaviour
 
                 if (Input.GetAxisRaw("Vertical") == -1)
                 {
-                    Brake = Mathf.Lerp(Brake, 1, 8*Time.deltaTime);
+                    BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
                 }
                 else
                 {
-                    Brake = Mathf.Lerp(Brake, 0, 16*Time.deltaTime);
+                    BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
                 }
             }
             

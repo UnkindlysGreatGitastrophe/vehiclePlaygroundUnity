@@ -68,6 +68,11 @@ public class WheelObj : MonoBehaviour
     float stiff = 10;
     float curve = 0;
 
+    [Header("Brakes Variables")]
+    public bool hasEBrake;
+    public float brakeTorque;
+    public float brakeBias;
+
     // Start is called before the first frame update
     void Start()
     {
@@ -128,13 +133,23 @@ public class WheelObj : MonoBehaviour
     
     public void applyTorqueToWheels(float torqueToApply)
     {
-        wheelAngularAcceleration = (torqueToApply + ReactionTorqueToWheel) / wheelInertia;
-        wheelAngularVelocity += wheelAngularAcceleration * Time.fixedDeltaTime;
+        wheelAngularAcceleration = (torqueToApply + ReactionTorqueToWheel + brakeTorque) / wheelInertia;
+        if (Mathf.Sign(wheelAngularVelocity) != Mathf.Sign(wheelAngularVelocity + (wheelAngularAcceleration * Time.fixedDeltaTime)))
+        {
+            wheelAngularVelocity = 0;
+            wheelAngularAcceleration = 0;
+        }
+        else
+        {
+            wheelAngularVelocity += wheelAngularAcceleration * Time.fixedDeltaTime;
+        }
+
     }
 
         public void applyLongitudinalForce()
     {
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        Speed = localVelocity.magnitude * 3.6f;
         slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
         float driveForce = PacejkaApprox(slipRatio, z_shape);
         float dragCoefficient = 0.26f; // might be a bit too much
@@ -142,7 +157,6 @@ public class WheelObj : MonoBehaviour
         float resistanceCoefficient = 10f;
         rollResistance = -resistanceCoefficient * localVelocity;
         longitudinalForce = driveForce
-        //+ dragForce 
         //+ rollResistance
         ;
         Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
@@ -207,7 +221,23 @@ public class WheelObj : MonoBehaviour
         float wheelForwardVelocity = wheelVelocity * tireRadius;
         return -Mathf.Atan2(lateralVelocity, MathF.Abs(wheelForwardVelocity));
     }
+   #endregion
 
+
+   #region Brakes
+
+    public float calculateBrakeTorque(float brakeInput, float brakeBias, float maxBrakeTorque)
+    {
+        if (hasEBrake && car.eBrakeInput == 1)
+        {
+            return car.eBrakeInput * maxBrakeTorque;
+        }
+        else
+        {
+            return maxBrakeTorque * brakeBias * brakeInput;
+        }
+        
+    }
    #endregion
 
 
