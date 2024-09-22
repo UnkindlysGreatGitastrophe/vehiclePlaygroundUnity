@@ -1,8 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
-public class DriveTrainObj : MonoBehaviour
+public class DifferentialObj : MonoBehaviour
 {
     public enum DifferntialTypes {OPEN, LOCKED, LSD};
     public enum DriveType {FWD, RWD, AWD};
@@ -45,49 +46,50 @@ public class DriveTrainObj : MonoBehaviour
         }
     }
 
-    public void calculateDriveShaft()
+    public float calculateDifferential(int i)
     {
-        
+        float torqueOffset = 0;
         if (difType == DifferntialTypes.LSD)
         {
-            LSDDif();
+            car.torqueToWheel = car.Tc * car.gearBox.get_ratio() * differentialFinalGearRatio / poweredWheels;
+            torqueOffset = LSDDif(i);
+            return torqueOffset;
+
         }
         if (difType == DifferntialTypes.LOCKED)
         {
             //lockedDif();
+            return torqueOffset;
+
         }
         else
         {
-            DriveShaftTorque = car.Tc * car.gearBox.get_ratio();
-            DriveShaftAccel = DriveShaftTorque / DriveShaftInertia;
-            car.torqueToWheel = car.Tc * car.gearBox.get_ratio() * differentialFinalGearRatio / poweredWheels;
+            return torqueOffset;
             // DriveShaftAngularVel += DriveShaftAngularVel + DriveShaftAccel * Time.fixedDeltaTime; // Broken
         }
     }
+    
 
-    public void LSDDif()
+    public float LSDDif(int i)
     {
     // If the difference in road reaction torque (fabs(T_left-T_right)) is bigger than the preload torque, the diff gets unlocked.
     // While the diff is unlocked, you apply the preload torque to counter the wheel velocity difference.
     // Do NOT apply the preload torque back to the engine however! This torque acts directly inside the cage system, and isn't transferred back to the engine.
     // When the sign of the difference in wheel velocities changes, lock the diff. Make sure you understand that sentence; while applying friction, 
     // at some point the difference of the wheel velocities will go from a positive number to a negative number, or vice versa. As soon as this happens, you'll get into the flip-flop state of applying friction. To avoid that, set the diff locked state to true.
-         float torqueDiffLR = car.wheels[2].ReactionTorqueToWheel - car.wheels[3].ReactionTorqueToWheel; // Torque difference of left - right reaction torque
-         float torqueDiffRL = car.wheels[3].ReactionTorqueToWheel - car.wheels[2].ReactionTorqueToWheel; // Torque difference of left - right reaction torque
-         if (car.wheels[2].ReactionTorqueToWheel / car.wheels[3].ReactionTorqueToWheel > torqueBias && torqueDiffLR > preLoadTorque) // Left wheel torque > right wheel torque
+         float torqueDiffLR = car.wheels[i].ReactionTorqueToWheel - car.wheels[i+1].ReactionTorqueToWheel; // Torque difference of left - right reaction torque
+         float torqueDiffRL = car.wheels[i+1].ReactionTorqueToWheel - car.wheels[i].ReactionTorqueToWheel; // Torque difference of left - right reaction torque
+         if (car.wheels[i].ReactionTorqueToWheel / car.wheels[i+1].ReactionTorqueToWheel > torqueBias && torqueDiffLR > preLoadTorque) // Left wheel torque > right wheel torque
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel - preLoadTorque);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel + preLoadTorque);
+                 return -preLoadTorque;
              }
-         else if (car.wheels[3].ReactionTorqueToWheel / car.wheels[2].ReactionTorqueToWheel > torqueBias && torqueDiffRL > preLoadTorque) // Right wheel torque > Left wheel torque
+         else if (car.wheels[i+1].ReactionTorqueToWheel / car.wheels[i].ReactionTorqueToWheel > torqueBias && torqueDiffLR > preLoadTorque) // Right wheel torque > Left wheel torque
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel + preLoadTorque);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel - preLoadTorque);
+                 return +preLoadTorque;
              }
          else
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel);
+                 return 0;
              }
      
     }

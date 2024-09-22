@@ -272,6 +272,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   tireGripFactor: 1
   z_shape: 1.65
+  hasEBrake: 1
   brakeTorque: 0
   brakeBias: 0
 --- !u!1 &103842992
@@ -547,7 +548,8 @@ MonoBehaviour:
   springRate: 36787.5
   damperRate: 1226.25
   maxSteeringAngle: 34
-  tireGripFactor: 1
+  tireGripFactorFront: 1
+  tireGripFactorBack: 1
   tireRadius: 0.45
   wheels:
   - {fileID: 1350769075}
@@ -561,36 +563,79 @@ MonoBehaviour:
   - 180
   steeringVelRatio: []
   curveTireGripFactor: []
-  gripCurve:
+  isFrontWheel: 01010000
+  gripCurveFrontWheels:
     serializedVersion: 2
     m_Curve:
     - serializedVersion: 3
       time: 0
-      value: 0.8
-      inSlope: -0.07016532
-      outSlope: -0.07016532
-      tangentMode: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
       weightedMode: 0
-      inWeight: 0
-      outWeight: 0.08617718
+      inWeight: 0.33333334
+      outWeight: 0.33333334
     - serializedVersion: 3
-      time: 0.48430717
-      value: 0.26832974
-      inSlope: -0.2356216
-      outSlope: -0.2356216
-      tangentMode: 0
+      time: 0.38
+      value: 0.90909094
+      inSlope: -0.7272725
+      outSlope: -0.7272725
+      tangentMode: 136
       weightedMode: 0
-      inWeight: 0.079130046
-      outWeight: 0.26060125
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.5
+      value: 0.27272728
+      inSlope: -1.1730206
+      outSlope: -1.1730206
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
     - serializedVersion: 3
       time: 1
-      value: 0.1
-      inSlope: -0.033665076
-      outSlope: -0.033665076
-      tangentMode: 0
+      value: 0.09090909
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
       weightedMode: 0
-      inWeight: 0.09637375
-      outWeight: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    m_PreInfinity: 2
+    m_PostInfinity: 2
+    m_RotationOrder: 4
+  gripCurveBackWheels:
+    serializedVersion: 2
+    m_Curve:
+    - serializedVersion: 3
+      time: 0
+      value: 1
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 0.306
+      value: 0.199295
+      inSlope: -0.18438156
+      outSlope: -0.18438156
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
+      time: 1
+      value: 0.15319963
+      inSlope: 0
+      outSlope: 0
+      tangentMode: 136
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
     m_PreInfinity: 2
     m_PostInfinity: 2
     m_RotationOrder: 4
@@ -605,17 +650,26 @@ MonoBehaviour:
     - serializedVersion: 3
       time: 0
       value: 400
-      inSlope: 0
-      outSlope: 0
+      inSlope: 0.08660241
+      outSlope: 0.08660241
       tangentMode: 34
       weightedMode: 0
       inWeight: 0
       outWeight: 0.33333334
     - serializedVersion: 3
+      time: 3464.1067
+      value: 700
+      inSlope: 0.020351015
+      outSlope: 0.020351015
+      tangentMode: 34
+      weightedMode: 0
+      inWeight: 0.33333334
+      outWeight: 0.33333334
+    - serializedVersion: 3
       time: 10000
       value: 400
-      inSlope: 0
-      outSlope: 0
+      inSlope: -0.045900382
+      outSlope: -0.045900382
       tangentMode: 34
       weightedMode: 0
       inWeight: 0.33333334
@@ -841,7 +895,7 @@ GameObject:
   - component: {fileID: 238002025}
   - component: {fileID: 238002026}
   m_Layer: 0
-  m_Name: DriveTrain
+  m_Name: Differential
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -880,6 +934,11 @@ MonoBehaviour:
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
+  difType: 2
+  driveType: 1
+  preLoadTorque: 50
+  torqueBias: 1.5
+  poweredWheels: 0
 --- !u!1001 &245650277
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1177,6 +1236,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   tireGripFactor: 1
   z_shape: 1.65
+  hasEBrake: 1
   brakeTorque: 0
   brakeBias: 0
 --- !u!1 &327879725
@@ -1253,6 +1313,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   tireGripFactor: 1
   z_shape: 1.65
+  hasEBrake: 0
   brakeTorque: 0
   brakeBias: 0
 --- !u!4 &435664744 stripped
@@ -2166,6 +2227,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   tireGripFactor: 1
   z_shape: 1.65
+  hasEBrake: 0
   brakeTorque: 0
   brakeBias: 0
 --- !u!1 &805386538
@@ -2449,7 +2511,7 @@ MonoBehaviour:
   engine: {fileID: 1562774180}
   clutch: {fileID: 926752183}
   gearBox: {fileID: 1767474583}
-  driveTrain: {fileID: 238002026}
+  differential: {fileID: 238002026}
   wheels:
   - {fileID: 781590713}
   - {fileID: 327879727}
@@ -2461,10 +2523,11 @@ MonoBehaviour:
   maxBrakeTorque: 2000
   frontBrakeBias: 0.65
   Throttle: 0
-  ThrottleLock: 0
+  ThrottleLock: 1
   BrakeInput: 0
   eBrakeInput: 0
   steeringInput: 0
+  steeringLock: 0
   Tc: 0
   torqueToWheel: 0
 --- !u!1 &915311571
@@ -4191,14 +4254,14 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2092161463}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -1, z: -0, w: 0.00000020861623}
   m_LocalPosition: {x: -18.99, y: 1.3382893, z: 1.9342431}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 871312164}
   m_Father: {fileID: 0}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: -180, z: 0}
 --- !u!1001 &2101760021
 PrefabInstance:
   m_ObjectHideFlags: 0

@@ -58,7 +58,6 @@ public class WheelObj : MonoBehaviour
 
     public float lateralForce;
     public float slipAngle;
-    public float maxSteeringAngle; 
     public float tireGripFactor; 
     
     [Header("Pacejka Variables")]
@@ -125,7 +124,7 @@ public class WheelObj : MonoBehaviour
     void updateWheelRotation()
     {
         wheels.transform.Rotate(wheelAngularVelocity * Time.fixedDeltaTime * Mathf.Rad2Deg,0,0); // RADS/SEC * SEC * DEG/RADS
-        steeringAngle = car.steeringInput * maxSteeringAngle;
+        steeringAngle = car.steeringInput * car.clampedSteeringAngle;
         transform.localRotation = Quaternion.Euler(0, steeringAngle*steeringFactor, 0);
     }
 
