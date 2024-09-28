@@ -59,6 +59,14 @@ public class WheelObj : MonoBehaviour
     public float lateralForce;
     public float slipAngle;
     public float tireGripFactor; 
+    // These need to be global
+    float differentialSlipRatio = 0.0f;
+    float differentialTanSlipAngle = 0.0f;
+
+    // Relaxation lengths
+    float relLenLongitudinal = 0.08f;
+    float relLenLateral = 0.16f;
+
     
     [Header("Pacejka Variables")]
     float peak = 1;
@@ -89,7 +97,7 @@ public class WheelObj : MonoBehaviour
         if(isHit)
         {
             GetSuspensionForce();
-            carRigidBody.AddForceAtPosition(forcePerTire, transform.position); // ApplyForce
+            carRigidBody.AddForceAtPosition(forcePerTire, transform.position); // Apply Suspension Force
             updateWheelRotation();
             wheels.transform.localPosition = new Vector3(0,-(hitDistance-tireRadius),0);
         }
@@ -103,6 +111,15 @@ public class WheelObj : MonoBehaviour
         Debug.DrawRay(transform.position, -transform.TransformDirection(Vector3.up) * maxHitDistance, Color.yellow);         // Debug Raycast Here
         isHit = Physics.Raycast(transform.position, -transform.TransformDirection(Vector3.up), out RaycastDir, maxHitDistance); // Raycast
     }
+
+    void updateWheelRotation()
+    {
+        wheels.transform.Rotate(wheelAngularVelocity * Time.fixedDeltaTime * Mathf.Rad2Deg,0,0); // RADS/SEC * SEC * DEG/RADS
+        steeringAngle = car.steeringInput * car.clampedSteeringAngle;
+        transform.localRotation = Quaternion.Euler(0, steeringAngle*steeringFactor, 0);
+    }
+
+    #region Forces
     void GetSuspensionForce()
     {
         hitDistance = (RaycastDir.point - transform.position).magnitude;
@@ -121,12 +138,21 @@ public class WheelObj : MonoBehaviour
         // Dampening usually is 1/10th the Stiffness Rate.
     }
 
-    void updateWheelRotation()
+    public void applyWheelForces()
     {
-        wheels.transform.Rotate(wheelAngularVelocity * Time.fixedDeltaTime * Mathf.Rad2Deg,0,0); // RADS/SEC * SEC * DEG/RADS
-        steeringAngle = car.steeringInput * car.clampedSteeringAngle;
-        transform.localRotation = Quaternion.Euler(0, steeringAngle*steeringFactor, 0);
+        //We must modifiy the Lateral and longitudinal forces so that it does not exceed FZ * coefficient of friction for the tire, 
+        //longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+        //lateralForce = lateralForce * (Mathf.Abs(slipAngle)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+        if(isHit)
+        {
+            carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
+            carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) + dragForce + rollResistance, transform.position);
+        }
     }
+
+    #endregion
+
+
 
     #region Slip Ratio
     
@@ -164,6 +190,25 @@ public class WheelObj : MonoBehaviour
         ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
         if(isHit)
             carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) + dragForce + rollResistance, transform.position);
+    }
+
+        public void calculateLongitudinalForce()
+    {
+        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        Speed = localVelocity.magnitude * 3.6f;
+        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
+        float driveForce = PacejkaApprox(slipRatio, z_shape);
+        float dragCoefficient = 0.26f; // might be a bit too much
+        dragForce = -dragCoefficient * localVelocity * localVelocity.magnitude;
+        float resistanceCoefficient = 10f;
+        rollResistance = -resistanceCoefficient * localVelocity;
+        longitudinalForce = driveForce
+        //+ rollResistance
+        ;
+        Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
+        Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);
+        Debug.DrawRay(transform.position, dragForce.normalized ,Color.yellow);
+        ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
     }
 
 
@@ -215,11 +260,34 @@ public class WheelObj : MonoBehaviour
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
     }
 
+    public void calculateLateralForce()
+    {
+        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        slipAngle = GetSlipAngle(wheelAngularVelocity, localVelocity.x);
+        slipAngle = CalcSlipAngle();
+        lateralForce = PacejkaApprox(slipAngle, x_shape) * tireGripFactor;
+    }
+
     float GetSlipAngle(float wheelVelocity, float lateralVelocity)
     {
         float wheelForwardVelocity = wheelVelocity * tireRadius;
         return -Mathf.Atan2(lateralVelocity, MathF.Abs(wheelForwardVelocity));
     }
+
+    float CalcSlipAngle()
+    {
+        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        float velocityForwardAbs = Mathf.Max(Mathf.Abs(localVelocity.z), 0.5f); // You can fine tune 0.5f for your own needs
+        float steadyStateSlipAngle = Mathf.Atan2(localVelocity.x, velocityForwardAbs);
+        float tanSlipAngleDeltaClamp = Mathf.Abs(Mathf.Tan(steadyStateSlipAngle) - differentialTanSlipAngle) / relLenLateral / Time.fixedDeltaTime;
+        float tanSlipAngleDelta = (localVelocity.x - Mathf.Abs(localVelocity.z) * differentialTanSlipAngle) / relLenLateral;
+        tanSlipAngleDelta = Mathf.Clamp(tanSlipAngleDelta, -tanSlipAngleDeltaClamp, tanSlipAngleDeltaClamp);
+
+        differentialTanSlipAngle += tanSlipAngleDelta * Time.fixedDeltaTime;
+        differentialTanSlipAngle = Mathf.Clamp(differentialTanSlipAngle, -Mathf.Abs(Mathf.Tan(steadyStateSlipAngle)), Mathf.Abs(Mathf.Tan(steadyStateSlipAngle)));
+        return -Mathf.Atan(differentialTanSlipAngle);
+    }
+
    #endregion
 
 

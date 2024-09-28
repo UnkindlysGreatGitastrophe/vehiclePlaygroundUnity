@@ -28,6 +28,7 @@ public class CarObj : MonoBehaviour
     public float steeringInput;
     public float clampedSteeringAngle;
     public float maxSteeringAngle = 35f; 
+    public float minSteeringAngle = 15f;
 
     public SteeringLock steeringLock;
     public float k = 0.5f;
@@ -39,6 +40,9 @@ public class CarObj : MonoBehaviour
     public float torqueToWheel = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
     public float carSpeed = 0;
+    public float avgFrontSlipAngle;
+    public float avgBackSlipAngle;
+
 
     void Start()
     {
@@ -70,9 +74,10 @@ public class CarObj : MonoBehaviour
         torqueToWheel = Tc * gearBox.get_ratio() * differential.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
         for (int i = 0; i < poweredWheels.Length/2; i++)
         {
-            float torqueOffset = differential.calculateDifferential(i);
-            poweredWheels[i].applyTorqueToWheels(torqueToWheel+torqueOffset);
-            poweredWheels[i+1].applyTorqueToWheels(torqueToWheel-torqueOffset);
+            //float torqueOffset =
+             differential.calculateDifferential(i);
+            //poweredWheels[i].applyTorqueToWheels(torqueToWheel-torqueOffset);
+            //poweredWheels[i+1].applyTorqueToWheels(torqueToWheel+torqueOffset);
             Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity);
         }
         for (int i = 0; i < wheels.Length; i++)
@@ -80,10 +85,11 @@ public class CarObj : MonoBehaviour
             wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque);
             if (!poweredWheels.Contains(wheels[i]))
                 wheels[i].applyTorqueToWheels(0);
-			wheels[i].applyLongitudinalForce(); // Function for applying force based on Slip Ratio
-            wheels[i].applyLateralForce();
+			wheels[i].calculateLongitudinalForce(); // Function for applying force based on Slip Ratio
+            wheels[i].calculateLateralForce();
+            wheels[i].applyWheelForces();
         }
-        carSpeed = rb.velocity.z * 3.6f;
+        carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f;
 
 
     }
@@ -146,10 +152,47 @@ public class CarObj : MonoBehaviour
                 break;
             default:
                 steeringInput = Input.GetAxis("Horizontal");
-                clampedSteeringAngle = maxSteeringAngle *  (1.0f / (1.0f + Mathf.Abs(carSpeed) * k));
+                GetSpeedBasedSteerAngle();
+                //GetSlipBasedSteerAngle();
                 break;
             }
             
+    }
+
+    void GetSpeedBasedSteerAngle()
+    {
+        clampedSteeringAngle = Mathf.Clamp(maxSteeringAngle *  (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)),minSteeringAngle,maxSteeringAngle);
+        avgBackSlipAngle = 0;
+        for (int i = 2; i < wheels.Length; i++)
+        {
+            avgBackSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
+        }
+        if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle)
+        {
+            clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle),minSteeringAngle,maxSteeringAngle);
+        }
+    }
+
+    void GetSlipBasedSteerAngle()
+    {
+        avgFrontSlipAngle = 0;
+        avgBackSlipAngle = 0;
+
+        for (int i = 0; i < 2; i++)
+        {
+            avgFrontSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
+        }
+        clampedSteeringAngle = Mathf.Clamp(avgFrontSlipAngle,minSteeringAngle,maxSteeringAngle);
+        for (int i = 2; i < wheels.Length; i++)
+        {
+            avgBackSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
+        }
+        if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle)
+        {
+            clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle),minSteeringAngle,maxSteeringAngle); // Assist with spinning out
+        }
+
+        
     }
     #endregion
 
