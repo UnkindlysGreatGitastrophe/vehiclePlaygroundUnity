@@ -19,6 +19,7 @@ public class CarObj : MonoBehaviour
     [Header("BrakeInput Parameters")]
     public float maxBrakeTorque;
     public float frontBrakeBias;
+    public bool hasABS;
 
     [Header("Input")]
     public float Throttle;

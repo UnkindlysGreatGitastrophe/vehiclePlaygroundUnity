@@ -105,16 +105,11 @@ public class DifferentialObj : MonoBehaviour
             }
             else
             {
-                // torqueToWheel = Tc * gearBox.get_ratio() * differential.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
-                float halfangularDifference = (car.poweredWheels[i].wheelAngularVelocity - car.poweredWheels[i+1].wheelAngularVelocity) * 0.5f;
-                float leftWheelTorque;
-                float rightWheelTorque;
-                leftWheelTorque = car.torqueToWheel - Mathf.Clamp(car.poweredWheels[i].wheelInertia * halfangularDifference / Time.fixedDeltaTime, -car.torqueToWheel,car.torqueToWheel);
-                rightWheelTorque = car.torqueToWheel + Mathf.Clamp(car.poweredWheels[i+1].wheelInertia * halfangularDifference / Time.fixedDeltaTime, -car.torqueToWheel,car.torqueToWheel);
+                float halfAngularVel = (car.poweredWheels[i].wheelAngularVelocity - car.poweredWheels[i+1].wheelAngularVelocity) * 0.5f / Time.fixedDeltaTime;
+                float lockedTorque = halfAngularVel * car.poweredWheels[i].wheelInertia;
+                car.poweredWheels[i].applyTorqueToWheels(car.torqueToWheel * 0.5f - lockedTorque);
+                car.poweredWheels[i+1].applyTorqueToWheels(car.torqueToWheel * 0.5f + lockedTorque);
 
-                
-                car.poweredWheels[i].applyTorqueToWheels(leftWheelTorque);
-                car.poweredWheels[i+1].applyTorqueToWheels(rightWheelTorque);
             }
             
         } 

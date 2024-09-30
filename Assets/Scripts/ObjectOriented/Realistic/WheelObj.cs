@@ -159,7 +159,7 @@ public class WheelObj : MonoBehaviour
     public void applyTorqueToWheels(float torqueToApply)
     {
         wheelAngularAcceleration = (torqueToApply + ReactionTorqueToWheel + brakeTorque) / wheelInertia;
-        if (Mathf.Sign(wheelAngularVelocity) != Mathf.Sign(wheelAngularVelocity + (wheelAngularAcceleration * Time.fixedDeltaTime)))
+        if (Mathf.Sign(wheelAngularVelocity) != Mathf.Sign(wheelAngularVelocity + (wheelAngularAcceleration * Time.fixedDeltaTime)) && (car.BrakeInput > 0.01f || car.eBrakeInput > 0.01f))
         {
             wheelAngularVelocity = 0;
             wheelAngularAcceleration = 0;
@@ -301,10 +301,22 @@ public class WheelObj : MonoBehaviour
         }
         else
         {
+            if (car.hasABS) // ABS
+            return applyABS(brakeInput, brakeBias, maxBrakeTorque);
+            else
             return maxBrakeTorque * brakeBias * brakeInput;
         }
         
     }
+
+    public float applyABS(float brakeInput, float brakeBias, float maxBrakeTorque)
+    {
+        if (Mathf.Abs(slipRatio) < 0.25f) // ABS
+            return maxBrakeTorque * brakeBias * brakeInput;
+            else
+            return 0;
+    }
+
    #endregion
 
 
