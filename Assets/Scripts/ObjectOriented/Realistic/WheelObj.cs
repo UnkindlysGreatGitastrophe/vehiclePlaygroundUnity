@@ -141,8 +141,17 @@ public class WheelObj : MonoBehaviour
     public void applyWheelForces()
     {
         //We must modifiy the Lateral and longitudinal forces so that it does not exceed FZ * coefficient of friction for the tire, 
-        //longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
-        //lateralForce = lateralForce * (Mathf.Abs(slipAngle)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+        if (slipRatio != 0 && slipAngle != 0)
+        {
+            longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+            lateralForce = lateralForce * (Mathf.Abs(slipAngle)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+        }
+        else
+        {
+            longitudinalForce = 0;
+            lateralForce = 0;
+        }
+        
         if(isHit)
         {
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
@@ -197,7 +206,8 @@ public class WheelObj : MonoBehaviour
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
         Speed = localVelocity.magnitude * 3.6f;
         slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
-        float driveForce = PacejkaApprox(slipRatio, z_shape);
+        float driveForce = PacejkaApprox(slipRatio, z_shape) 
+        * tireGripFactor;
         float dragCoefficient = 0.26f; // might be a bit too much
         dragForce = -dragCoefficient * localVelocity * localVelocity.magnitude;
         float resistanceCoefficient = 10f;

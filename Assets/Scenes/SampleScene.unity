@@ -933,13 +933,13 @@ MonoBehaviour:
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
-  difType: 1
+  difType: 2
   driveType: 1
-  preLoadTorque: 50
+  preLoadTorque: 70
   torqueBias: 1.5
   poweredWheels: 0
   powerAngle: 85
-  coastAngle: 45
+  coastAngle: 30
   clutchPacks: 1
 --- !u!1001 &245650277
 PrefabInstance:
@@ -2519,8 +2519,9 @@ MonoBehaviour:
   poweredWheels:
   - {fileID: 92706692}
   - {fileID: 310582972}
-  maxBrakeTorque: 2000
-  frontBrakeBias: 0.65
+  maxBrakeTorque: 5000
+  frontBrakeBias: 1
+  hasABS: 0
   Throttle: 0
   ThrottleLock: 0
   BrakeInput: 0

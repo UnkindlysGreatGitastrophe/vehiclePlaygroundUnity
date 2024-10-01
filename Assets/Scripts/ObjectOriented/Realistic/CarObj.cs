@@ -17,19 +17,19 @@ public class CarObj : MonoBehaviour
     private Rigidbody rb;
 
     [Header("BrakeInput Parameters")]
-    public float maxBrakeTorque;
-    public float frontBrakeBias;
-    public bool hasABS;
+    public float maxBrakeTorque; // Maximum amount of braking possible for a car, Equals ebrake torque on ebrake wheels
+    public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
+    public bool hasABS; 
 
     [Header("Input")]
     public float Throttle;
-    public bool ThrottleLock;
+    public bool ThrottleLock; // Auto accelerate
     public float BrakeInput;
     public float eBrakeInput;
     public float steeringInput;
     public float clampedSteeringAngle;
-    public float maxSteeringAngle = 35f; 
-    public float minSteeringAngle = 15f;
+    public float maxSteeringAngle = 35f; // When the car is slow enough, this is as far as the wheels can turns
+    public float minSteeringAngle = 15f; // When the car is fast enough, this is as far as the wheels can turns
 
     public SteeringLock steeringLock;
     public float k = 0.5f;
@@ -48,8 +48,9 @@ public class CarObj : MonoBehaviour
     void Start()
     {
         rb = GetComponent<Rigidbody>();
-        frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1);
-        for (int w = 0; w < wheels.Length; w++)
+        frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1); // Make sure it is within the correct boundaries
+        
+        for (int w = 0; w < wheels.Length; w++) // Set up brake bias here, if past the halfway mark of the wheels, then we need to assign the rear brake bias instead of the front
         {
             if (w < wheels.Length / 2)
             {
@@ -73,22 +74,19 @@ public class CarObj : MonoBehaviour
 		if(gearBox.get_ratio() != 0.0f) // If not in Neutral or shifting
 			Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
         torqueToWheel = Tc * gearBox.get_ratio() * differential.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
-        for (int i = 0; i < poweredWheels.Length/2; i++)
+        for (int i = 0; i < poweredWheels.Length/2; i++) // Iterate on each wheel axle that is powered by the engine
         {
-            //float torqueOffset =
-             differential.calculateDifferential(i);
-            //poweredWheels[i].applyTorqueToWheels(torqueToWheel-torqueOffset);
-            //poweredWheels[i+1].applyTorqueToWheels(torqueToWheel+torqueOffset);
-            Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity);
+            differential.calculateDifferential(i); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
+            //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
         }
-        for (int i = 0; i < wheels.Length; i++)
+        for (int i = 0; i < wheels.Length; i++) // Iterate on all whels
         {
-            wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque);
-            if (!poweredWheels.Contains(wheels[i]))
+            wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque); // Get the brake torque here
+            if (!poweredWheels.Contains(wheels[i])) // If the wheel is not powered at all, apply no drive torque here.
                 wheels[i].applyTorqueToWheels(0);
-			wheels[i].calculateLongitudinalForce(); // Function for applying force based on Slip Ratio
-            wheels[i].calculateLateralForce();
-            wheels[i].applyWheelForces();
+			wheels[i].calculateLongitudinalForce(); // Function for calculating longitudinal force based on Slip Ratio
+            wheels[i].calculateLateralForce(); // Function for calculating lateral force based on Slip Angle
+            wheels[i].applyWheelForces(); // Function for applying a combination of Lateral and longitudinal force
         }
         carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f;
 
