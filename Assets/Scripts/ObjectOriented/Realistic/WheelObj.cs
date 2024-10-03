@@ -48,6 +48,7 @@ public class WheelObj : MonoBehaviour
     [Header("Longitudinal Variables")]
     public float longitudinalForce; // Newtons -> kg*m/s^2
     public float slipRatio;
+    public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2
     Vector3 rollResistance; // Newtons -> kg*m/s^2
     
@@ -154,6 +155,7 @@ public class WheelObj : MonoBehaviour
         
         if(isHit)
         {
+            carRigidBody.AddForceAtPosition(Vector3.down*(car.downForce/4),transform.position);
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
             carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) + dragForce + rollResistance, transform.position);
         }
@@ -180,34 +182,17 @@ public class WheelObj : MonoBehaviour
 
     }
 
-        public void applyLongitudinalForce()
-    {
-        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
-        Speed = localVelocity.magnitude * 3.6f;
-        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
-        float driveForce = PacejkaApprox(slipRatio, z_shape);
-        float dragCoefficient = 0.26f; // might be a bit too much
-        dragForce = -dragCoefficient * localVelocity * localVelocity.magnitude;
-        float resistanceCoefficient = 10f;
-        rollResistance = -resistanceCoefficient * localVelocity;
-        longitudinalForce = driveForce
-        //+ rollResistance
-        ;
-        Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
-        Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);
-        Debug.DrawRay(transform.position, dragForce.normalized ,Color.yellow);
-        ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
-        if(isHit)
-            carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) + dragForce + rollResistance, transform.position);
-    }
-
         public void calculateLongitudinalForce()
     {
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
         Speed = localVelocity.magnitude * 3.6f;
         slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
-        float driveForce = PacejkaApprox(slipRatio, z_shape) 
+        driveForce = PacejkaApprox(slipRatio, z_shape) 
         * tireGripFactor;
+        if (car.hasTC)
+        {
+            applyTracControl();
+        }
         float dragCoefficient = 0.26f; // might be a bit too much
         dragForce = -dragCoefficient * localVelocity * localVelocity.magnitude;
         float resistanceCoefficient = 10f;
@@ -257,18 +242,20 @@ public class WheelObj : MonoBehaviour
 	return diffSlipRatio;
    }
 
+   public void applyTracControl()
+   {
+        car.avgBackSlipRatio = 0;
+        for (int i = 0; i < car.poweredWheels.Length; i++)
+        {
+            car.avgBackSlipRatio += car.poweredWheels[i].slipRatio / 2;
+        }
+        if (Mathf.Abs(car.avgBackSlipRatio) > 0.1404f) // ABS
+            car.Throttle = car.Throttle * Mathf.Clamp((0.1404f - Mathf.Abs(car.avgBackSlipRatio)) / 0.1404f, 0, 1);
+   }
+
    #endregion
 
    #region Slip Angle
-
-    public void applyLateralForce()
-    {
-        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
-        slipAngle = GetSlipAngle(wheelAngularVelocity, localVelocity.x);
-        lateralForce = PacejkaApprox(slipAngle, x_shape) * tireGripFactor;
-        if(isHit)
-            carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
-    }
 
     public void calculateLateralForce()
     {

@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Baracuda.Monitoring;
 using UnityEngine;
 
 public class GearBoxObj : MonoBehaviour
@@ -14,10 +15,14 @@ public class GearBoxObj : MonoBehaviour
 
 
     [Header("GearBox Outputs")]
-    [SerializeField] private int currentGear = 1;
+    [Monitor] [SerializeField] private int currentGear = 1;
     [SerializeField] private bool gearEngaged = true;
     
 
+void Start(){
+            this.StartMonitoring();
+
+}
     // Update is called once per frame
     void Update()
     {

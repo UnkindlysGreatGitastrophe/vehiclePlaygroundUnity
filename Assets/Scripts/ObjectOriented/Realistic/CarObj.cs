@@ -1,7 +1,6 @@
-using System.Collections;
-using System.Collections.Generic;
 using System.Linq;
-using System.Net.Sockets;
+using Baracuda.Monitoring;
+using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 
 public class CarObj : MonoBehaviour
@@ -20,9 +19,10 @@ public class CarObj : MonoBehaviour
     public float maxBrakeTorque; // Maximum amount of braking possible for a car, Equals ebrake torque on ebrake wheels
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
     public bool hasABS; 
+    public bool hasTC;
 
     [Header("Input")]
-    public float Throttle;
+    [Monitor] public float Throttle;
     public bool ThrottleLock; // Auto accelerate
     public float BrakeInput;
     public float eBrakeInput;
@@ -34,19 +34,26 @@ public class CarObj : MonoBehaviour
     public SteeringLock steeringLock;
     public float k = 0.5f;
 
+    [Header("Aerodynamics")]
+    public float downForce;
+    public float airDensity;
+    public float maxAero;
+    public float aeroRate;
 
 
     [Header("Output")]
     public float Tc = 0; // Torque produced from the clutch after supplying it with the engine Torque
     public float torqueToWheel = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
-    public float carSpeed = 0;
+    [Monitor] public float carSpeed = 0;
     public float avgFrontSlipAngle;
     public float avgBackSlipAngle;
+    [Monitor] public float avgBackSlipRatio;
 
 
     void Start()
     {
+        this.StartMonitoring();
         rb = GetComponent<Rigidbody>();
         frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1); // Make sure it is within the correct boundaries
         
@@ -68,11 +75,17 @@ public class CarObj : MonoBehaviour
         // Handle Input Here:
         GetInput(); 
         
-        
+        GetDownForce();
         // Car Operation begins here:
         engine.engineOperation(); // Function for running the engine
 		if(gearBox.get_ratio() != 0.0f) // If not in Neutral or shifting
 			Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
+        else
+        {
+            Tc = 0;
+            engine.clutch_torque = 0;
+        }
+            
         torqueToWheel = Tc * gearBox.get_ratio() * differential.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
         for (int i = 0; i < poweredWheels.Length/2; i++) // Iterate on each wheel axle that is powered by the engine
         {
@@ -96,14 +109,22 @@ public class CarObj : MonoBehaviour
     #region Input Handling
     public void GetInput()
     {
-		    /*if (Input.GetKey(KeyCode.UpArrow))
+		    if (Input.GetKey(KeyCode.Z))
             {
-               Throttle = 1;
+               Time.timeScale = 1;
             }
-			else
-			{
-				Throttle = 0;
-			}*/
+			if (Input.GetKey(KeyCode.X))
+            {
+               Time.timeScale = 0.5f;
+            }
+            if (Input.GetKey(KeyCode.C))
+            {
+               Time.timeScale = 0.1f;
+            }
+            if (Input.GetKey(KeyCode.V))
+            {
+               Time.timeScale = 0.01f;
+            }
             if (Input.GetKey(KeyCode.Space))
             {
                 eBrakeInput = 1;
@@ -166,11 +187,12 @@ public class CarObj : MonoBehaviour
         {
             avgBackSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
         }
-        if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle)
+        if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle + 5)
         {
             clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle),minSteeringAngle,maxSteeringAngle);
         }
     }
+
 
     void GetSlipBasedSteerAngle()
     {
@@ -192,6 +214,12 @@ public class CarObj : MonoBehaviour
         }
 
         
+    }
+
+    void GetDownForce()
+    {
+        downForce = Mathf.Min(maxAero,0.5f*airDensity * Mathf.Pow(Mathf.Abs(carSpeed),2)*aeroRate);
+        //rb.AddForceAtPosition(Vector3.down*downForce, rb.centerOfMass);
     }
     #endregion
 

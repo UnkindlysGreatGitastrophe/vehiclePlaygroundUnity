@@ -2,6 +2,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using Baracuda.Monitoring;
 using UnityEngine;
 
 public class DifferentialObj : MonoBehaviour
@@ -45,6 +46,7 @@ public class DifferentialObj : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        this.StartMonitoring();
         if (driveType == DriveType.AWD)
         {
             poweredWheels = car.wheels.Length;
@@ -96,7 +98,7 @@ public class DifferentialObj : MonoBehaviour
                 float a = car.poweredWheels[i+1].ReactionTorqueToWheel * car.poweredWheels[i].wheelInertia;
                 float b = car.poweredWheels[i].ReactionTorqueToWheel * car.poweredWheels[i+1].wheelInertia;
                 float c = car.poweredWheels[i].wheelInertia * car.poweredWheels[i+1].wheelInertia * (car.poweredWheels[i].wheelAngularVelocity - car.poweredWheels[i+1].wheelAngularVelocity) / Time.fixedDeltaTime;
-                isPowered = Math.Sign(car.torqueToWheel) != 0;
+                isPowered = Math.Sign(car.torqueToWheel) > 0;
                 currentDiffRatio = Mathf.Max(isPowered ? Mathf.Cos(powerAngle * Mathf.Deg2Rad) : Mathf.Cos(coastAngle * Mathf.Deg2Rad)); // This is where the salisbury comes in, due to the design, we are using cosine angles to get the diff ratio
                 maxTorqueTransfer = Mathf.Max(preLoadTorque, currentDiffRatio * (1+2*clutchPacks) * Mathf.Abs(car.torqueToWheel)); // This is what we use to clamp the offset torque to add in to the clutch toque
 

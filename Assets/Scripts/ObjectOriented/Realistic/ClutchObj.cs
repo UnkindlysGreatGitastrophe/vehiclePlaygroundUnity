@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Baracuda.Monitoring;
 using UnityEngine;
 
 public class ClutchObj : MonoBehaviour
@@ -39,6 +40,7 @@ public class ClutchObj : MonoBehaviour
 
     void Start()
     {
+        this.StartMonitoring();
         clutchMaxTorq = clutchStiffness * clutchCapacity; // What is the very most torque that we can feed into the gearbox?
     }
 
