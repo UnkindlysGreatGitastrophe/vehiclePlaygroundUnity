@@ -6460,8 +6460,8 @@ MonoBehaviour:
   - {fileID: 940906507}
   maxBrakeTorque: 5000
   frontBrakeBias: 1
-  hasABS: 1
-  hasTC: 1
+  hasABS: 0
+  hasTC: 0
   Throttle: 0
   ThrottleLock: 0
   BrakeInput: 0

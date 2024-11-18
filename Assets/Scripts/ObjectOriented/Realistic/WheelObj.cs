@@ -99,13 +99,14 @@ public class WheelObj : MonoBehaviour
         {
             GetSuspensionForce();
             carRigidBody.AddForceAtPosition(forcePerTire, transform.position); // Apply Suspension Force
-            updateWheelRotation();
             wheels.transform.localPosition = new Vector3(0,-(hitDistance-tireRadius),0);
         }
         else
         {
             wheels.transform.localPosition = new Vector3(0,-(maxHitDistance-tireRadius),0);
         }
+        updateWheelRotation();
+
     }
     void Raycast()
     {
@@ -203,7 +204,10 @@ public class WheelObj : MonoBehaviour
         Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
         Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);
         Debug.DrawRay(transform.position, dragForce.normalized ,Color.yellow);
-        ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
+        if (isHit)
+            ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
+        else
+            ReactionTorqueToWheel = 0;
     }
 
 
