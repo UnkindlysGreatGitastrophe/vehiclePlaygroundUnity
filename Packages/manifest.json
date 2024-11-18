@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "com.baracuda.runtime-monitoring": "3.6.0",
     "com.spoiledcat.git": "1.0.41-preview-g2692419106",
     "com.unity.cinemachine": "2.10.1",
     "com.unity.collab-proxy": "2.4.3",
@@ -47,6 +48,13 @@
       "url": "https://registry.spoiledcat.com",
       "scopes": [
         "com.spoiledcat"
+      ]
+    },
+    {
+      "name": "OpenUPM",
+      "url": "https://package.openupm.com",
+      "scopes": [
+        "com.baracuda"
       ]
     }
   ]

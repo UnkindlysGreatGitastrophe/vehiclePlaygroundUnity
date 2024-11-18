@@ -10,11 +10,14 @@ public class CarScriptArcadeV2 : MonoBehaviour
     float springForce; float damperForce; public float suspensionRestLength; 
     public float tireMass; public int[] steeringFactor; public float springRate; public float damperRate; 
     [Header("Wheel Parameters")]
-    float steeringAngle; public float maxSteeringAngle; public float tireGripFactor; public float tireRadius; public GameObject[] wheels;  public float[] tireOrientation;
+    float steeringAngle; public float maxSteeringAngle; public float tireGripFactorFront; public float tireGripFactorBack; public float tireRadius; public GameObject[] wheels;  public float[] tireOrientation;
     public float[] steeringVelRatio;
     public float[] curveTireGripFactor;
+    public bool[] isFrontWheel;
 
-    public AnimationCurve gripCurve;
+    public AnimationCurve gripCurveFrontWheels;
+
+    public AnimationCurve gripCurveBackWheels;
 
 
     private Transform carRims;
@@ -191,13 +194,15 @@ public class CarScriptArcadeV2 : MonoBehaviour
         tireWorldVel = carRigidBody.GetPointVelocity(wheels[i].transform.position);
         float steeringVel = Vector3.Dot(steeringDir, tireWorldVel);
         steeringVelRatio[i] = steeringVel / tireWorldVel.magnitude;
-        curveTireGripFactor[i] = gripCurve.Evaluate(Mathf.Abs(steeringVelRatio[i]));
-        float desiredVelChange = -steeringVel * tireGripFactor;
-        desiredVelChange = -steeringVel * curveTireGripFactor[i];
+        if (isFrontWheel[i])
+            curveTireGripFactor[i] = tireGripFactorFront * gripCurveBackWheels.Evaluate(Mathf.Abs(steeringVelRatio[i]));
+        else
+            curveTireGripFactor[i] = tireGripFactorBack * gripCurveFrontWheels.Evaluate(Mathf.Abs(steeringVelRatio[i]));
+        float desiredVelChange = -steeringVel * curveTireGripFactor[i];
         float desiredAccel = desiredVelChange / Time.fixedDeltaTime;
         
-        Debug.DrawRay(wheels[i].transform.position, steeringDir * (-steeringVel*tireGripFactor / tireWorldVel.magnitude), Color.green);
-        Debug.DrawRay(wheels[i].transform.position, (steeringDir * steeringVel).normalized, Color.red);
+        Debug.DrawRay(wheels[i].transform.position, steeringDir * (-steeringVel*curveTireGripFactor[i] / tireWorldVel.magnitude), Color.green);
+        //Debug.DrawRay(wheels[i].transform.position, (steeringDir * steeringVel).normalized, Color.red);
         //Debug.DrawRay(wheels[i].transform.position, (steeringDir * tireMass * desiredAccel)-tireWorldVel, Color.cyan);
         carRigidBody.AddForceAtPosition(steeringDir * tireMass * desiredAccel, wheels[i].transform.position);
     }
