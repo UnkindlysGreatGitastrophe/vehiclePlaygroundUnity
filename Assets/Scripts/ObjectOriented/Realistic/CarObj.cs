@@ -2,15 +2,18 @@ using System.Linq;
 using Baracuda.Monitoring;
 using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
+using System.Collections.Generic;
 
 public class CarObj : MonoBehaviour
 {
     public enum SteeringLock {OFF, RIGHT, LEFT}
+    public enum DriveType {FWD, RWD, AWD};
+
     [Header("References")]
     public EngineObj engine;
     public ClutchObj clutch;
     public GearBoxObj gearBox;
-    public DifferentialObj differential;
+    public DifferentialObj[] differential;
     public WheelObj[] wheels;
     public WheelObj[] poweredWheels;
     private Rigidbody rb;
@@ -30,9 +33,16 @@ public class CarObj : MonoBehaviour
     public float clampedSteeringAngle;
     public float maxSteeringAngle = 35f; // When the car is slow enough, this is as far as the wheels can turns
     public float minSteeringAngle = 15f; // When the car is fast enough, this is as far as the wheels can turns
-
     public SteeringLock steeringLock;
-    public float k = 0.5f;
+
+
+    [Header("DriveTrain Parameters")]
+    public DriveType driveType = DriveType.RWD;
+
+    public float torqueDistribution = 0.6f; // Option Applicable when AWD is selected, otherwise the power is distributed only to rear or front wheels.
+    public float[] torqueRatio = new float[2];
+
+    public float k = 0.5f; // Rate at which steering angle approaches min steering angle
 
     [Header("Aerodynamics")]
     public float downForce;
@@ -43,7 +53,7 @@ public class CarObj : MonoBehaviour
 
     [Header("Output")]
     public float Tc = 0; // Torque produced from the clutch after supplying it with the engine Torque
-    public float torqueToWheel = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
+    [Monitor] public float torqueToWheel = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
     [Monitor] public float carSpeed = 0;
     public float avgFrontSlipAngle;
@@ -56,7 +66,11 @@ public class CarObj : MonoBehaviour
         this.StartMonitoring();
         rb = GetComponent<Rigidbody>();
         frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1); // Make sure it is within the correct boundaries
-        
+        torqueDistribution = Mathf.Clamp(torqueDistribution, 0, 1); // Make sure it is within the correct boundaries
+        torqueRatio[0] = torqueDistribution;
+        torqueRatio[1] = 1-torqueDistribution;
+        differential = transform.GetComponentsInChildren<DifferentialObj>();
+
         for (int w = 0; w < wheels.Length; w++) // Set up brake bias here, if past the halfway mark of the wheels, then we need to assign the rear brake bias instead of the front
         {
             if (w < wheels.Length / 2)
@@ -67,6 +81,40 @@ public class CarObj : MonoBehaviour
             {
                 wheels[w].brakeBias = 1 - frontBrakeBias;
             }
+        }
+
+        if (driveType == DriveType.AWD)
+        {
+            poweredWheels = wheels;
+
+        }
+        else if (driveType == DriveType.RWD)
+        {
+            int idx = 0;
+            poweredWheels = new WheelObj[2];
+            for (int w = 0; w < wheels.Length; w++)
+            {
+                if (wheels[w].name.StartsWith("R"))
+                {
+                    poweredWheels[idx++] = wheels[w];
+                }
+            }
+            torqueRatio[0] = 1;
+            torqueRatio[1] = 0;
+
+        }
+        else {
+            int idx = 0;
+            poweredWheels = new WheelObj[2];
+            for (int w = 0; w < wheels.Length; w++)
+            {
+                if (wheels[w].name.StartsWith("F"))
+                {
+                    poweredWheels[idx++] = wheels[w];
+                }
+            }
+            torqueRatio[0] = 0;
+            torqueRatio[1] = 1;
         }
     }
     
@@ -86,10 +134,11 @@ public class CarObj : MonoBehaviour
             engine.clutch_torque = 0;
         }
             
-        torqueToWheel = Tc * gearBox.get_ratio() * differential.differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
-        for (int i = 0; i < poweredWheels.Length/2; i++) // Iterate on each wheel axle that is powered by the engine
+        //torqueToWheel = Tc * gearBox.get_ratio() * differential[0].differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
+        for (int i = 0; i < differential.Length; i++) // Iterate on each wheel axle that is powered by the engine
         {
-            differential.calculateDifferential(i); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
+            torqueToWheel = (Tc * gearBox.get_ratio() * differential[0].differentialFinalGearRatio) * torqueRatio[i];
+            differential[i].calculateDifferential(); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
             //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
         }
         for (int i = 0; i < wheels.Length; i++) // Iterate on all whels

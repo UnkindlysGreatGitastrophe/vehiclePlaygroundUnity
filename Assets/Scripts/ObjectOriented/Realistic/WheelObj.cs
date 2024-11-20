@@ -2,6 +2,8 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using JetBrains.Annotations;
+using Baracuda.Monitoring;
+
 using UnityEngine;
 
 public class WheelObj : MonoBehaviour
@@ -46,7 +48,7 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-    public float longitudinalForce; // Newtons -> kg*m/s^2
+    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
     public float slipRatio;
     public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2
@@ -84,6 +86,7 @@ public class WheelObj : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        this.StartMonitoring();
         carRigidBody = car.GetComponent<Rigidbody>();
         wheels = transform.GetChild(0).gameObject;
         maxHitDistance = suspensionRestLength + tireRadius;
