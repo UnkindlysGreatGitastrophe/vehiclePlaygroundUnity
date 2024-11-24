@@ -35,7 +35,7 @@ public class WheelObj : MonoBehaviour
 
     [Header("Raycast")]
     RaycastHit RaycastDir;
-    bool isHit;
+    public bool isHit;
 
     [Header("Wheel Outputs")]
     public float ReactionTorqueToWheel = 0; // N*m ->  1 kilogram meter per second squared * meters -> (kg*m/s^2)*m

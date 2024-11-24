@@ -480,6 +480,7 @@ MonoBehaviour:
   airDensity: 1.2
   maxAero: 2000
   aeroRate: 0.1
+  airRotationAmount: 50
   Tc: 0
   torqueToWheel: 0
   carSpeed: 0
@@ -552,6 +553,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -1280,7 +1282,7 @@ Transform:
   m_GameObject: {fileID: 227632271}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -19.15, y: -0.181, z: 1.7847362}
+  m_LocalPosition: {x: -19.15, y: 3.56, z: 1.7847362}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -1700,6 +1702,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -1777,6 +1780,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -1854,6 +1858,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -2084,6 +2089,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -2611,6 +2617,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -2688,6 +2695,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -3354,6 +3362,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -3431,6 +3440,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -3760,6 +3770,7 @@ MonoBehaviour:
   airDensity: 1.2
   maxAero: 2000
   aeroRate: 0.1
+  airRotationAmount: 50
   Tc: 0
   torqueToWheel: 0
   carSpeed: 0
@@ -4062,6 +4073,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -4649,6 +4661,7 @@ MonoBehaviour:
   steeringFactor: 1
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -4806,7 +4819,7 @@ MonoBehaviour:
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
-  difType: 0
+  difType: 2
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
@@ -4925,6 +4938,7 @@ MonoBehaviour:
   steeringFactor: 0
   wheelInertia: 0
   diffSlipRatio: 0
+  isHit: 0
   ReactionTorqueToWheel: 0
   wheelAngularAcceleration: 0
   wheelAngularVelocity: 0
@@ -6156,7 +6170,7 @@ MonoBehaviour:
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
-  difType: 0
+  difType: 2
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
@@ -6573,8 +6587,8 @@ MonoBehaviour:
   maxSteeringAngle: 35
   minSteeringAngle: 22
   steeringLock: 0
-  driveType: 1
-  torqueDistribution: 0
+  driveType: 2
+  torqueDistribution: 0.7
   torqueRatio:
   - 0
   - 0
@@ -6583,6 +6597,7 @@ MonoBehaviour:
   airDensity: 1.2
   maxAero: 2000
   aeroRate: 0.1
+  airRotationAmount: 3
   Tc: 0
   torqueToWheel: 0
   carSpeed: 0

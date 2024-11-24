@@ -3,6 +3,7 @@ using Baracuda.Monitoring;
 using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 
 public class CarObj : MonoBehaviour
 {
@@ -49,6 +50,7 @@ public class CarObj : MonoBehaviour
     public float airDensity;
     public float maxAero;
     public float aeroRate;
+    public float airRotationAmount = 50f;
 
 
     [Header("Output")]
@@ -61,6 +63,7 @@ public class CarObj : MonoBehaviour
     [Monitor] public float avgBackSlipRatio;
 
 
+    #region Start/Update
     void Start()
     {
         this.StartMonitoring();
@@ -82,11 +85,9 @@ public class CarObj : MonoBehaviour
                 wheels[w].brakeBias = 1 - frontBrakeBias;
             }
         }
-
         if (driveType == DriveType.AWD)
         {
             poweredWheels = wheels;
-
         }
         else if (driveType == DriveType.RWD)
         {
@@ -101,7 +102,6 @@ public class CarObj : MonoBehaviour
             }
             torqueRatio[0] = 1;
             torqueRatio[1] = 0;
-
         }
         else {
             int idx = 0;
@@ -116,6 +116,8 @@ public class CarObj : MonoBehaviour
             torqueRatio[0] = 0;
             torqueRatio[1] = 1;
         }
+
+        
     }
     
     void FixedUpdate()
@@ -150,10 +152,17 @@ public class CarObj : MonoBehaviour
             wheels[i].calculateLateralForce(); // Function for calculating lateral force based on Slip Angle
             wheels[i].applyWheelForces(); // Function for applying a combination of Lateral and longitudinal force
         }
+
+        if (isCarMidAir())
+        {
+            AerialRotation();
+        }
         carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f;
 
 
     }
+
+    #endregion
 
     #region Input Handling
     public void GetInput()
@@ -265,10 +274,36 @@ public class CarObj : MonoBehaviour
         
     }
 
+    #endregion
+
+    #region Aerial Dynamics
+
+    bool isCarMidAir()
+    // Check to see if all 4 tires are off the ground
+    {
+        for (int w = 0; w < wheels.Length; w++)
+        {
+            if (wheels[w].isHit == true)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
     void GetDownForce()
     {
         downForce = Mathf.Min(maxAero,0.5f*airDensity * Mathf.Pow(Mathf.Abs(carSpeed),2)*aeroRate);
         //rb.AddForceAtPosition(Vector3.down*downForce, rb.centerOfMass);
+    }
+
+    void AerialRotation()
+    {
+        // Allow the car to Rotate
+        float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
+        float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
+
+        rb.AddTorque(transform.up * h, ForceMode.VelocityChange);
+        rb.AddTorque(transform.right * v, ForceMode.VelocityChange);
     }
     #endregion
 

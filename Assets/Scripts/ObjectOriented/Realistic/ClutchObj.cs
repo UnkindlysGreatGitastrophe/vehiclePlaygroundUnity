@@ -71,7 +71,7 @@ public class ClutchObj : MonoBehaviour
             // To be more detailed, since the clutch is placed after the engine and before the gearbox, we cannot have the ratios affecting t2 because the torque coming back from the wheels have lost their torque from passing the diff and gearbox/
         }
         // DriveTrain Inertia
-        i2 = (car.poweredWheels[0].wheelInertia+car.poweredWheels[1].wheelInertia)/Mathf.Pow(car.gearBox.get_ratio() * car.differential[0].differentialFinalGearRatio,2); // DriveTrain Inertia powered wheels, I2=(wi1+wi2+ ... + wiN)/(gear ratio^2)
+        i2 = (car.poweredWheels[0].wheelInertia*car.poweredWheels.Length)/Mathf.Pow(car.gearBox.get_ratio() * car.differential[0].differentialFinalGearRatio,2); // DriveTrain Inertia powered wheels, I2=(wi1+wi2+ ... + wiN)/(gear ratio^2)
         
         float avgSpin = 0;
         for (int i = 0; i < car.poweredWheels.Length; i++) // Take the average wheelangularvelocity of all POWERED wheels
