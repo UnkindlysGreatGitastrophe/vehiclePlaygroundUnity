@@ -4,6 +4,7 @@ using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
 using System.Collections.Generic;
 using Unity.VisualScripting;
+using UnityEngine.Animations;
 
 public class CarObj : MonoBehaviour
 {
@@ -51,6 +52,9 @@ public class CarObj : MonoBehaviour
     public float maxAero;
     public float aeroRate;
     public float airRotationAmount = 50f;
+
+    RaycastHit RaycastDir;
+    bool isHit;
 
 
     [Header("Output")]
@@ -155,7 +159,8 @@ public class CarObj : MonoBehaviour
 
         if (isCarMidAir())
         {
-            AerialRotation();
+            //AerialRotation();
+            PID();
         }
         carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f;
 
@@ -304,7 +309,52 @@ public class CarObj : MonoBehaviour
 
         rb.AddTorque(transform.up * h, ForceMode.VelocityChange);
         rb.AddTorque(transform.right * v, ForceMode.VelocityChange);
+
+        //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
     }
+
+    void PID()
+    {
+        float proportionalGain = 10f;
+        float integralGain;
+        float derivativeGain = 2f;
+        Vector3 errorLast = Vector3.zero;
+
+        bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast
+
+        Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
+
+
+        if (isHit)
+        {
+
+            Debug.DrawRay(RaycastDir.point, RaycastDir.normal, Color.magenta);
+            Debug.DrawRay(rb.position, rb.transform.up, Color.magenta);
+
+
+            
+
+            Vector3 targetValue = RaycastDir.normal;
+            //Vector3 error = targetValue - rb.transform.up;
+            Vector3 error = Vector3.Cross(rb.transform.up, targetValue);
+            // Calculate P
+            Vector3 P = proportionalGain * error;
+            // Calculate D term
+            Vector3 errorRateOfChange = (error - errorLast) / Time.fixedDeltaTime;
+            errorLast = error;
+
+            //Vector3 valueRateOfChange = (curren)
+
+            Vector3 D = derivativeGain * errorRateOfChange;
+
+            rb.AddTorque(P, ForceMode.Impulse);
+        }
+
+
+        // float error = targetValue - currentValue;
+
+    }
+
     #endregion
 
     
