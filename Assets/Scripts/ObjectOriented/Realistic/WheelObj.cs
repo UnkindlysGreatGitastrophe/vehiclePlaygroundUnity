@@ -48,7 +48,7 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
+     public float longitudinalForce; // Newtons -> kg*m/s^2
     public float slipRatio;
     public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2

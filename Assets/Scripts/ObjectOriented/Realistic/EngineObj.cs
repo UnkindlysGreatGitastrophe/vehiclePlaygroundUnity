@@ -18,7 +18,7 @@ public class EngineObj : MonoBehaviour
 
     [Header("Engine Outputs")]
     public float engineAngularVelocity = 0.0f;
-    [Monitor] private float engineRPM = 0.0f;
+    private float engineRPM = 0.0f;
     [Header("Engine Torques")]
     public float initialTorque;
 

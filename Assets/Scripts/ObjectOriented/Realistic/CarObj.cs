@@ -5,6 +5,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine.Animations;
+using Palmmedia.ReportGenerator.Core.Reporting.Builders;
 
 public class CarObj : MonoBehaviour
 {
@@ -31,6 +32,8 @@ public class CarObj : MonoBehaviour
     public bool ThrottleLock; // Auto accelerate
     public float BrakeInput;
     public float eBrakeInput;
+    public bool allowBarrelRoll;
+    public bool PIDengaged;
     public float steeringInput;
     public float clampedSteeringAngle;
     public float maxSteeringAngle = 35f; // When the car is slow enough, this is as far as the wheels can turns
@@ -46,12 +49,31 @@ public class CarObj : MonoBehaviour
 
     public float k = 0.5f; // Rate at which steering angle approaches min steering angle
 
-    [Header("Aerodynamics")]
+    [Header("Aerial Dynamics")]
+
     public float downForce;
     public float airDensity;
     public float maxAero;
     public float aeroRate;
     public float airRotationAmount = 50f;
+    [Monitor] public int numFrontFlips = 0;
+    [Monitor] public int numBackFlips = 0;
+    [Monitor] public int numLeftBarrelRolls = 0;
+    [Monitor] public int numRightBarrelRolls = 0;
+    [Monitor] public int numLeft360s = 0;
+    [Monitor] public int numRight360s = 0;
+    [Monitor] public Vector3 totalRotation = Vector3.zero;
+    [Monitor] public Quaternion lastRotation;
+    [Monitor] private Vector3 angleDiffs;
+
+    bool originInit = false;
+
+    [Header("PID")]
+    public float proportionalGain = 10f;
+    public float integralGain = 2f;
+    public float derivativeGain = 2f;
+    Vector3 errorLast = Vector3.zero;
+    Vector3 integrationStored = Vector3.zero;
 
     RaycastHit RaycastDir;
     bool isHit;
@@ -65,6 +87,8 @@ public class CarObj : MonoBehaviour
     public float avgFrontSlipAngle;
     public float avgBackSlipAngle;
     [Monitor] public float avgBackSlipRatio;
+
+
 
 
     #region Start/Update
@@ -159,8 +183,22 @@ public class CarObj : MonoBehaviour
 
         if (isCarMidAir())
         {
-            //AerialRotation();
-            PID();
+            if (!originInit)
+            {
+                originInit = true;
+                lastRotation = rb.rotation;
+            }
+            if (PIDengaged)
+            {
+                PID();
+            }
+            AerialRotation();
+            TrackStunts();
+            
+        }
+        else
+        {
+            originInit = false;
         }
         carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f;
 
@@ -191,10 +229,20 @@ public class CarObj : MonoBehaviour
             if (Input.GetKey(KeyCode.Space))
             {
                 eBrakeInput = 1;
+                allowBarrelRoll = true;
             }
             else
             {
                 eBrakeInput = 0;
+                allowBarrelRoll = false;
+            }
+            if (Input.GetKey(KeyCode.LeftControl))
+            {
+                PIDengaged = true;
+            }
+            else
+            {
+                PIDengaged = false;
             }
             if (Input.GetKeyDown(KeyCode.T))
             {
@@ -303,22 +351,86 @@ public class CarObj : MonoBehaviour
 
     void AerialRotation()
     {
+
+
         // Allow the car to Rotate
         float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
         float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
 
         rb.AddTorque(transform.up * h, ForceMode.VelocityChange);
-        rb.AddTorque(transform.right * v, ForceMode.VelocityChange);
+        if (allowBarrelRoll)
+        {
+            rb.AddTorque(transform.forward * h, ForceMode.VelocityChange);
+
+        }
+        else
+        {
+            rb.AddTorque(transform.right * v, ForceMode.VelocityChange);
+        }
+        
+
+        
+        
+        
+
 
         //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
     }
 
+    void TrackStunts()
+    {
+        angleDiffs = Vector3.zero;
+        Quaternion difference = Quaternion.Inverse(rb.rotation) * lastRotation;
+        lastRotation = rb.rotation;
+
+        angleDiffs.x = Mathf.DeltaAngle(0, difference.eulerAngles.x);
+        angleDiffs.y = Mathf.DeltaAngle(0, difference.eulerAngles.y);
+        angleDiffs.z = Mathf.DeltaAngle(0, difference.eulerAngles.z);
+
+        totalRotation.x += angleDiffs.x;
+
+        if (totalRotation.x < -360f)
+        {
+            totalRotation.x = 0;
+            numFrontFlips++;
+        }
+        else if (totalRotation.x > 360f)
+        {
+            totalRotation.x = 0;
+            numBackFlips++;
+        }
+
+        totalRotation.y += angleDiffs.y;
+
+        if (totalRotation.y < -360f)
+        {
+            totalRotation.y = 0;
+            numRight360s++;
+        }
+        else if (totalRotation.y > 360f)
+        {
+            totalRotation.y = 0;
+            numLeft360s++;
+        }
+
+        totalRotation.z += angleDiffs.z;
+
+        if (totalRotation.z < -360f)
+        {
+            totalRotation.z = 0;
+            numRightBarrelRolls++;
+        }
+        else if (totalRotation.z > 360f)
+        {
+            totalRotation.z = 0;
+            numLeftBarrelRolls++;
+        }
+    }
+
     void PID()
     {
-        float proportionalGain = 10f;
-        float integralGain;
-        float derivativeGain = 2f;
-        Vector3 errorLast = Vector3.zero;
+        
+        
 
         bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast
 
@@ -343,11 +455,16 @@ public class CarObj : MonoBehaviour
             Vector3 errorRateOfChange = (error - errorLast) / Time.fixedDeltaTime;
             errorLast = error;
 
-            //Vector3 valueRateOfChange = (curren)
 
             Vector3 D = derivativeGain * errorRateOfChange;
+            
 
-            rb.AddTorque(P, ForceMode.Impulse);
+                        // Calculate I term
+            integrationStored = integrationStored + (error * Time.fixedDeltaTime);
+            Vector3 I =  integrationStored * integralGain;
+
+
+            rb.AddTorque(P+D+I, ForceMode.Impulse);
         }
 
 
