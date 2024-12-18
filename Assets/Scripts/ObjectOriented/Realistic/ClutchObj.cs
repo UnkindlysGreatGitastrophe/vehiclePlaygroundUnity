@@ -12,7 +12,7 @@ public class ClutchObj : MonoBehaviour
 
     [Header("Clutch Lock")]
     public bool toggleManualClutch = false;
-    public float clutchLock;
+    [Monitor] public float clutchLock;
 
 
     [Header("Clutch B1 (Connected to Engine)")]

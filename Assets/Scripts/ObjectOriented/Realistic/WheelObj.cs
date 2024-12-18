@@ -48,11 +48,11 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-     public float longitudinalForce; // Newtons -> kg*m/s^2
-    public float slipRatio;
+    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
+    [Monitor] public float slipRatio;
     public float driveForce;
-    Vector3 dragForce; // Newtons -> kg*m/s^2
-    Vector3 rollResistance; // Newtons -> kg*m/s^2
+    [Monitor] Vector3 dragForce; // Newtons -> kg*m/s^2
+    [Monitor] Vector3 rollResistance; // Newtons -> kg*m/s^2
     
 
 
@@ -159,9 +159,12 @@ public class WheelObj : MonoBehaviour
         
         if(isHit)
         {
-            carRigidBody.AddForceAtPosition(Vector3.down*(car.downForce/4),transform.position);
+            carRigidBody.AddForceAtPosition(-transform.up*(car.downForce/4),transform.position);
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
-            carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) + dragForce + rollResistance, transform.position);
+            carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) 
+            + dragForce 
+            + rollResistance
+            , transform.position);
         }
     }
 
@@ -198,11 +201,13 @@ public class WheelObj : MonoBehaviour
             applyTracControl();
         }
         float dragCoefficient = 0.26f; // might be a bit too much
-        dragForce = -dragCoefficient * localVelocity * localVelocity.magnitude;
+        dragForce = transform.TransformDirection(dragCoefficient * -localVelocity * localVelocity.magnitude);
         float resistanceCoefficient = 10f;
-        rollResistance = -resistanceCoefficient * localVelocity;
+        rollResistance = transform.TransformDirection(resistanceCoefficient * -localVelocity);
         longitudinalForce = driveForce
         //+ rollResistance
+        //divide your limiter rpm by gear ratio, convert it to angular velocity and if you divide it by tyre radius you get what you want == Max speed for a gear
+        // 7000 / 3.6 / 4
         ;
         Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
         Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);
@@ -222,31 +227,16 @@ public class WheelObj : MonoBehaviour
 
     float GetSlipRatio(float wheelVelocity, float longitudinalVelocity) 
    {
-    //     float wheelLinearVelocity = wheelVelocity * tireRadius;
-    //    const float fullSlipVelocity = 5.0f;
+    float slipVelocityForward = wheelAngularVelocity * tireRadius - longitudinalVelocity;
+    float velocityForwardAbs = Mathf.Max(Mathf.Abs(longitudinalVelocity), 0.5f); // You can fine tune 0.5f for your own needs
+    float steadyStateSlipRatio = slipVelocityForward / velocityForwardAbs;
+    float slipRatioDeltaClamp = Mathf.Abs(steadyStateSlipRatio - differentialSlipRatio) / relLenLongitudinal / Time.fixedDeltaTime;
+    float slipRatioDelta = (slipVelocityForward - Mathf.Abs(longitudinalVelocity) * differentialSlipRatio) / relLenLongitudinal;
+    slipRatioDelta = Mathf.Clamp(slipRatioDelta, -slipRatioDeltaClamp, slipRatioDeltaClamp);
 
-    //    if (longitudinalVelocity == 0)
-    //        return 0;
-
-    //    float absRoadVelocity = Mathf.Abs(longitudinalVelocity);
-    //    float dampRatio = Mathf.Clamp01(absRoadVelocity / fullSlipVelocity);
-
-    // 	//return (wheelLinearVelocity - longitudinalVelocity) / Mathf.Max(absRoadVelocity, 5.0f);
-    //    return (wheelLinearVelocity - longitudinalVelocity) / absRoadVelocity * dampRatio;
-
-	float relaxLength = 0.1f;
-
-	float slipVelocity = wheelVelocity * tireRadius - longitudinalVelocity;
-	float dampedAbsRoadVel = Mathf.Max(Mathf.Abs(longitudinalVelocity), 5f);
-	float steadyStateSlipRatio = slipVelocity / dampedAbsRoadVel;
-	float clampRatio = Mathf.Abs(steadyStateSlipRatio);
-	float clampDelta = Time.fixedDeltaTime * Mathf.Abs(diffSlipRatio - steadyStateSlipRatio) / relaxLength;
-
-	float delta = Time.fixedDeltaTime * (slipVelocity - Mathf.Abs(longitudinalVelocity) * diffSlipRatio) / relaxLength;
-	delta = Mathf.Clamp(delta, -clampDelta, clampDelta);
-
-	diffSlipRatio = Mathf.Clamp(diffSlipRatio + delta, -clampRatio, clampRatio);
-	return diffSlipRatio;
+    differentialSlipRatio += slipRatioDelta * Time.fixedDeltaTime;
+    differentialSlipRatio = Mathf.Clamp(differentialSlipRatio, -Mathf.Abs(steadyStateSlipRatio), Mathf.Abs(steadyStateSlipRatio));
+    return differentialSlipRatio;
    }
 
    public void applyTracControl()

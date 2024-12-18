@@ -24,6 +24,8 @@ public class CarObj : MonoBehaviour
     [Header("BrakeInput Parameters")]
     public float maxBrakeTorque; // Maximum amount of braking possible for a car, Equals ebrake torque on ebrake wheels
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
+    [Header("Driving Assists")]
+
     public bool hasABS; 
     public bool hasTC;
 
@@ -56,15 +58,15 @@ public class CarObj : MonoBehaviour
     public float maxAero;
     public float aeroRate;
     public float airRotationAmount = 50f;
-    [Monitor] public int numFrontFlips = 0;
-    [Monitor] public int numBackFlips = 0;
-    [Monitor] public int numLeftBarrelRolls = 0;
-    [Monitor] public int numRightBarrelRolls = 0;
-    [Monitor] public int numLeft360s = 0;
-    [Monitor] public int numRight360s = 0;
-    [Monitor] public Vector3 totalRotation = Vector3.zero;
-    [Monitor] public Quaternion lastRotation;
-    [Monitor] private Vector3 angleDiffs;
+    public int numFrontFlips = 0;
+     public int numBackFlips = 0;
+     public int numLeftBarrelRolls = 0;
+     public int numRightBarrelRolls = 0;
+     public int numLeft360s = 0;
+     public int numRight360s = 0;
+     public Vector3 totalRotation = Vector3.zero;
+     public Quaternion lastRotation;
+     private Vector3 angleDiffs;
 
     bool originInit = false;
 
@@ -86,7 +88,7 @@ public class CarObj : MonoBehaviour
     [Monitor] public float carSpeed = 0;
     public float avgFrontSlipAngle;
     public float avgBackSlipAngle;
-    [Monitor] public float avgBackSlipRatio;
+    public float avgBackSlipRatio;
 
 
 
@@ -156,12 +158,13 @@ public class CarObj : MonoBehaviour
         GetDownForce();
         // Car Operation begins here:
         engine.engineOperation(); // Function for running the engine
-		if(gearBox.get_ratio() != 0.0f) // If not in Neutral or shifting
+		if(gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
 			Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
         else
         {
             Tc = 0;
             engine.clutch_torque = 0;
+            clutch.clutchLock = 0;
         }
             
         //torqueToWheel = Tc * gearBox.get_ratio() * differential[0].differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
@@ -256,11 +259,11 @@ public class CarObj : MonoBehaviour
             {
                 if (Input.GetAxisRaw("Vertical") == 1)
                 {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 4, 0, 1);
+                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
                 }
                 else
                 {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -10, 0, 1);
+                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
                 }
 
                 if (Input.GetAxisRaw("Vertical") == -1)
@@ -305,26 +308,14 @@ public class CarObj : MonoBehaviour
     }
 
 
-    void GetSlipBasedSteerAngle()
+    public float GetAVGWheelRPM()
     {
-        avgFrontSlipAngle = 0;
-        avgBackSlipAngle = 0;
-
-        for (int i = 0; i < 2; i++)
+        float AVG = 0;
+        for (int i = 0; i < wheels.Length; i++)
         {
-            avgFrontSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
+            AVG += wheels[i].wheelAngularVelocity * engine.AV_2_RPM / wheels.Length;
         }
-        clampedSteeringAngle = Mathf.Clamp(avgFrontSlipAngle,minSteeringAngle,maxSteeringAngle);
-        for (int i = 2; i < wheels.Length; i++)
-        {
-            avgBackSlipAngle += wheels[i].slipAngle * Mathf.Rad2Deg / 2;
-        }
-        if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle)
-        {
-            clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle),minSteeringAngle,maxSteeringAngle); // Assist with spinning out
-        }
-
-        
+        return AVG;
     }
 
     #endregion
@@ -357,23 +348,15 @@ public class CarObj : MonoBehaviour
         float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
         float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
 
-        rb.AddTorque(transform.up * h, ForceMode.VelocityChange);
+        rb.AddTorque(rb.transform.right * v, ForceMode.Acceleration);
         if (allowBarrelRoll)
         {
-            rb.AddTorque(transform.forward * h, ForceMode.VelocityChange);
-
+            rb.AddRelativeTorque(0f, 0f, h, ForceMode.Acceleration);
         }
         else
         {
-            rb.AddTorque(transform.right * v, ForceMode.VelocityChange);
+            rb.AddTorque(rb.transform.up * h, ForceMode.Acceleration);
         }
-        
-
-        
-        
-        
-
-
         //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
     }
 
@@ -430,7 +413,9 @@ public class CarObj : MonoBehaviour
     void PID()
     {
         
-        
+        if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(carSpeed) <= 5f) {
+        rb.AddRelativeTorque(0f, 0f, 30, ForceMode.Acceleration);
+        }
 
         bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast
 
