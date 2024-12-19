@@ -16,12 +16,12 @@ public class ClutchObj : MonoBehaviour
 
 
     [Header("Clutch B1 (Connected to Engine)")]
-    [SerializeField] private float w1;
+    [SerializeField] [Monitor] private float w1;
     [SerializeField] private float t1;
     [SerializeField] private float i1;
 
     [Header("Clutch B2 (Connected to DriveShaft)")]
-    [SerializeField] private float w2;
+    [SerializeField] [Monitor] private float w2;
     [SerializeField] private float t2;
     [SerializeField] private float i2;
 
@@ -67,11 +67,11 @@ public class ClutchObj : MonoBehaviour
         
         for (int i = 0; i < car.poweredWheels.Length; i++)
         {
-            t2 += car.poweredWheels[i].ReactionTorqueToWheel / (car.gearBox.get_ratio() * car.differential[0].differentialFinalGearRatio); // We want to divide by gear ratio and final drive ratio in order to accurately calculate the reaction torque.
+            t2 += car.poweredWheels[i].ReactionTorqueToWheel / (car.gearBox.get_ratio() * car.gearBox.finalDriveGear); // We want to divide by gear ratio and final drive ratio in order to accurately calculate the reaction torque.
             // To be more detailed, since the clutch is placed after the engine and before the gearbox, we cannot have the ratios affecting t2 because the torque coming back from the wheels have lost their torque from passing the diff and gearbox/
         }
         // DriveTrain Inertia
-        i2 = (car.poweredWheels[0].wheelInertia*car.poweredWheels.Length)/Mathf.Pow(car.gearBox.get_ratio() * car.differential[0].differentialFinalGearRatio,2); // DriveTrain Inertia powered wheels, I2=(wi1+wi2+ ... + wiN)/(gear ratio^2)
+        i2 = (car.poweredWheels[0].wheelInertia*car.poweredWheels.Length)/Mathf.Pow(car.gearBox.get_ratio() * car.gearBox.finalDriveGear,2); // DriveTrain Inertia powered wheels, I2=(wi1+wi2+ ... + wiN)/(gear ratio^2)
         
         float avgSpin = 0;
         for (int i = 0; i < car.poweredWheels.Length; i++) // Take the average wheelangularvelocity of all POWERED wheels
@@ -79,7 +79,7 @@ public class ClutchObj : MonoBehaviour
             avgSpin += car.poweredWheels[i].wheelAngularVelocity / car.poweredWheels.Length;
         }
 
-        w2 = avgSpin * (car.gearBox.get_ratio() * car.differential[0].differentialFinalGearRatio); // Drivetrain Angular Velocity
+        w2 = avgSpin * (car.gearBox.get_ratio() * car.gearBox.finalDriveGear); // Drivetrain Angular Velocity
 
 			//return (float)Math.Tanh((w1 - w2) * 1.0f) * clutchLock * clutchMaxTorq;
         return Mathf.Clamp( // This is the derivation for finding TC (Torque Clutch)

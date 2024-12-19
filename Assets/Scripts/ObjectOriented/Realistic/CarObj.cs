@@ -170,7 +170,7 @@ public class CarObj : MonoBehaviour
         //torqueToWheel = Tc * gearBox.get_ratio() * differential[0].differentialFinalGearRatio / poweredWheels.Length; // Send TC into gearbox and differential, which becomes the torque to apply to wheels
         for (int i = 0; i < differential.Length; i++) // Iterate on each wheel axle that is powered by the engine
         {
-            torqueToWheel = (Tc * gearBox.get_ratio() * differential[0].differentialFinalGearRatio) * torqueRatio[i];
+            torqueToWheel = (Tc * gearBox.get_ratio() * gearBox.finalDriveGear) * torqueRatio[i];
             differential[i].calculateDifferential(); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
             //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
         }

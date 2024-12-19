@@ -48,11 +48,11 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
-    [Monitor] public float slipRatio;
+    public float longitudinalForce; // Newtons -> kg*m/s^2
+    public float slipRatio;
     public float driveForce;
-    [Monitor] Vector3 dragForce; // Newtons -> kg*m/s^2
-    [Monitor] Vector3 rollResistance; // Newtons -> kg*m/s^2
+    Vector3 dragForce; // Newtons -> kg*m/s^2
+    Vector3 rollResistance; // Newtons -> kg*m/s^2
     
 
 
@@ -207,7 +207,19 @@ public class WheelObj : MonoBehaviour
         longitudinalForce = driveForce
         //+ rollResistance
         //divide your limiter rpm by gear ratio, convert it to angular velocity and if you divide it by tyre radius you get what you want == Max speed for a gear
-        // 7000 / 3.6 / 4
+        /*
+            EXAMPLE:
+                    let's say you have a tyre of a radius of 0.45
+                    the circumference is more or less 2.8 meters - that means the tyre is traveling 2.8 meters per revolution
+                    max engine revs = 6800
+                    revolutions per minute
+                    divide that by 60 and you get around 113 revs per second
+                    then taking into account gear ratios the wheel rotates more or less 7.8 times a second
+                    2.8 meters per revolution, 7.8 revolutions per second - 22.3 meters per second
+                    multiply by 3.6 - 80 KMH
+                    that's the correct calculation
+        */
+        //
         ;
         Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
         Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);

@@ -12,8 +12,6 @@ public class DifferentialObj : MonoBehaviour
     public WheelObj[] connectedWheels;
     [Header("DriveShaft Inputs")]
     public float DriveShaftInertia = 5;
-    public float differentialFinalGearRatio = 5;
-
 
     [Header("DriveShaft Outputs")]
     public float DriveShaftTorque = 0;
