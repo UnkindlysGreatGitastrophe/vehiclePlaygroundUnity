@@ -256,10 +256,16 @@ public class WheelObj : MonoBehaviour
         car.avgBackSlipRatio = 0;
         for (int i = 0; i < car.poweredWheels.Length; i++)
         {
-            car.avgBackSlipRatio += car.poweredWheels[i].slipRatio / 2;
+            car.avgBackSlipRatio += car.poweredWheels[i].slipRatio / car.poweredWheels.Length;
         }
-        if (Mathf.Abs(car.avgBackSlipRatio) > 0.1404f) // ABS
-            car.Throttle = car.Throttle * Mathf.Clamp((0.1404f - Mathf.Abs(car.avgBackSlipRatio)) / 0.1404f, 0, 1);
+        
+        //car.Throttle = car.Throttle * Mathf.Clamp((0.1404f - Mathf.Abs(car.avgBackSlipRatio)) / 0.1404f, 0, 1);
+        if (Mathf.Abs(car.avgBackSlipRatio) > 0.1404f)
+        {
+        float maxThrottle = Mathf.Clamp((0.1404f - Mathf.Abs(car.avgBackSlipRatio)) / 0.1404f, 0, 1);
+        car.Throttle = Mathf.Clamp(car.Throttle,0,maxThrottle);
+        }
+        
    }
 
    #endregion

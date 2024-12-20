@@ -1521,7 +1521,6 @@ MonoBehaviour:
   car: {fileID: 871312167}
   connectedWheels: []
   DriveShaftInertia: 5
-  differentialFinalGearRatio: 5
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
@@ -2050,6 +2049,7 @@ MonoBehaviour:
   engineMoment: 0.2
   engineDrag: 0.02
   engineBrake: 10
+  overRevPenalty: 500
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -4507,7 +4507,6 @@ MonoBehaviour:
   car: {fileID: 73846800}
   connectedWheels: []
   DriveShaftInertia: 5
-  differentialFinalGearRatio: 5
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
@@ -5212,7 +5211,6 @@ MonoBehaviour:
   car: {fileID: 2047399142}
   connectedWheels: []
   DriveShaftInertia: 5
-  differentialFinalGearRatio: 5
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
@@ -5454,9 +5452,8 @@ MonoBehaviour:
   - 4
   - 2
   - 1.5
-  - 1
   shiftTime: 0.2
-  finalDriveGear: 3.6
+  finalDriveGear: 5
   Transmissiontype: 0
   currentGear: 2
   gearEngaged: 1
@@ -5836,6 +5833,7 @@ MonoBehaviour:
   engineMoment: 0.2
   engineDrag: 0.02
   engineBrake: 10
+  overRevPenalty: 500
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -6571,11 +6569,10 @@ MonoBehaviour:
   car: {fileID: 2047399142}
   connectedWheels: []
   DriveShaftInertia: 5
-  differentialFinalGearRatio: 5
   DriveShaftTorque: 0
   DriveShaftAccel: 0
   DriveShaftAngularVel: 0
-  difType: 2
+  difType: 0
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
@@ -6769,6 +6766,7 @@ MonoBehaviour:
   engineMoment: 0.2
   engineDrag: 0.02
   engineBrake: 10
+  overRevPenalty: 500
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -6982,7 +6980,7 @@ MonoBehaviour:
   maxBrakeTorque: 5000
   frontBrakeBias: 0.3
   hasABS: 0
-  hasTC: 0
+  hasTC: 1
   Throttle: 0
   ThrottleLock: 0
   BrakeInput: 0

@@ -257,11 +257,11 @@ public class CarObj : MonoBehaviour
             }
             else
             {
-                if (Input.GetAxisRaw("Vertical") == 1)
+                if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true)
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
                 }
-                else
+                else if (gearBox.gearEngaged == true)
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
                 }

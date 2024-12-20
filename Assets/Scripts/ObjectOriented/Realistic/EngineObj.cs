@@ -15,6 +15,7 @@ public class EngineObj : MonoBehaviour
     public float engineMoment = 0.2f;
     public float engineDrag = 0.02f;
     public float engineBrake = 10f;
+    public float overRevPenalty = 500;
 
     [Header("Engine Outputs")]
     public float engineAngularVelocity = 0.0f;
@@ -48,7 +49,7 @@ public class EngineObj : MonoBehaviour
             dragTorque = engineBrake + (Mathf.Abs(engineAngularVelocity)*AV_2_RPM*engineDrag); // The friction torque that counters initial torque, gets higher with RPMs
             if (engineAngularVelocity * AV_2_RPM >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
             {
-                engineAngularVelocity -= 500 * RPM_2_AV;
+                engineAngularVelocity -= overRevPenalty * RPM_2_AV;
                 initialTorque = 0;
             }
             clutch_torque = car.Tc;
