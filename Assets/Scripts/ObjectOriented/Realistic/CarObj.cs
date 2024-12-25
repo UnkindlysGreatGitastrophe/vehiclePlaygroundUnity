@@ -26,13 +26,13 @@ public class CarObj : MonoBehaviour
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
     [Header("Driving Assists")]
 
-    public bool hasABS; 
+    public bool hasABS; // Toggles Anti Lock Brakes
     public bool hasTC;
 
     [Header("Input")]
     [Monitor] public float Throttle;
     public bool ThrottleLock; // Auto accelerate
-    public float BrakeInput;
+    [Monitor] public float BrakeInput;
     public float eBrakeInput;
     public bool allowBarrelRoll;
     public bool PIDengaged;
@@ -41,6 +41,7 @@ public class CarObj : MonoBehaviour
     public float maxSteeringAngle = 35f; // When the car is slow enough, this is as far as the wheels can turns
     public float minSteeringAngle = 15f; // When the car is fast enough, this is as far as the wheels can turns
     public SteeringLock steeringLock;
+    public bool AutoReverseMode = false;
 
 
     [Header("DriveTrain Parameters")]
@@ -257,23 +258,72 @@ public class CarObj : MonoBehaviour
             }
             else
             {
-                if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true)
+                if (gearBox.Transmissiontype == GearBoxObj.GearboxType.MANUAL)
                 {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                }
-                else if (gearBox.gearEngaged == true)
-                {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
-                }
+                    if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true)
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                    }
+                    else if (gearBox.gearEngaged == true)
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                    }
 
-                if (Input.GetAxisRaw("Vertical") == -1)
-                {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
+                    if (Input.GetAxisRaw("Vertical") == -1)
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
+                    }
+                    else
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
+                    }
                 }
-                else
+                if (gearBox.Transmissiontype == GearBoxObj.GearboxType.AUTOMATIC)
                 {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
+                    if (!AutoReverseMode)
+                    {
+                        if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true)
+                        {
+                            Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                        }
+                        else if (gearBox.gearEngaged == true)
+                        {
+                            Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                        }
+
+                        if (Input.GetAxisRaw("Vertical") == -1)
+                        {
+                            BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
+                        }
+                        else
+                        {
+                            BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
+                        }
+                    }
+                    else
+                    {
+                        if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true)
+                        {
+                            BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
+                        }
+                        else if (gearBox.gearEngaged == true)
+                        {
+                            BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
+                        }
+
+                        if (Input.GetAxisRaw("Vertical") == -1)
+                        {
+                            Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                        }
+                        else
+                        {
+                            Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                        }
+
+                    }
+                    
                 }
+                
             }
 
             switch(steeringLock) 

@@ -472,6 +472,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   minSteeringAngle: 22
   steeringLock: 0
+  AutoReverseMode: 0
   driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
@@ -1398,7 +1399,7 @@ Transform:
   m_GameObject: {fileID: 227632271}
   serializedVersion: 2
   m_LocalRotation: {x: -0.25881857, y: -0, z: -0, w: 0.965926}
-  m_LocalPosition: {x: -19.15, y: -1.65, z: -31.73}
+  m_LocalPosition: {x: -19.15, y: 0.38, z: -31.73}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -4012,6 +4013,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   minSteeringAngle: 22
   steeringLock: 0
+  AutoReverseMode: 0
   driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
@@ -5454,7 +5456,7 @@ MonoBehaviour:
   - 1.5
   shiftTime: 0.2
   finalDriveGear: 5
-  Transmissiontype: 0
+  Transmissiontype: 1
   currentGear: 2
   gearEngaged: 1
 --- !u!1 &1413363443
@@ -6980,7 +6982,7 @@ MonoBehaviour:
   maxBrakeTorque: 5000
   frontBrakeBias: 0.3
   hasABS: 0
-  hasTC: 1
+  hasTC: 0
   Throttle: 0
   ThrottleLock: 0
   BrakeInput: 0
@@ -6992,6 +6994,7 @@ MonoBehaviour:
   maxSteeringAngle: 35
   minSteeringAngle: 22
   steeringLock: 0
+  AutoReverseMode: 0
   driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
@@ -7063,7 +7066,7 @@ Rigidbody:
     m_Bits: 0
   m_ImplicitCom: 1
   m_ImplicitTensor: 1
-  m_UseGravity: 1
+  m_UseGravity: 0
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0

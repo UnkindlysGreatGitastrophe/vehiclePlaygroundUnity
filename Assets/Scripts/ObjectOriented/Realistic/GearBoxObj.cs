@@ -24,9 +24,9 @@ public class GearBoxObj : MonoBehaviour
     [Header("GearBox Outputs")]
     [Monitor] [SerializeField] private int currentGear = 1;
     [Monitor] [SerializeField] public bool gearEngaged = true;
-    
+    private float oldCarSpeed;
 
-void Start(){
+    void Start(){
             this.StartMonitoring();
             numOfGears = gearRatios.Length;
             car = transform.GetComponentInParent<CarObj>();
@@ -53,15 +53,36 @@ void Start(){
     #region Automatic
     private void AutoGearBoxManager()
     {
-        if (car.carSpeed >= GetMaxGearSpeed(currentGear))
+        if (gearEngaged)
         {
-            GearUP();
+            if (Mathf.Abs(car.carSpeed) < 1 && Mathf.Sign(oldCarSpeed) != Mathf.Sign(car.carSpeed) && Input.GetAxisRaw("Vertical") == -1 && car.AutoReverseMode == false)
+            {
+                car.AutoReverseMode = true;
+                GearREVERSE();
+                Debug.Log("Gear To Reverse");
+            }
+            else if (Mathf.Abs(car.carSpeed) < 1 && Mathf.Sign(oldCarSpeed) != Mathf.Sign(car.carSpeed) && Input.GetAxisRaw("Vertical") == 1 && car.AutoReverseMode == true)
+            {
+                car.AutoReverseMode = false;
+                GearToFirst();
+                Debug.Log("Gear To First");
+            }
+            else if (car.carSpeed >= Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0)
+            {
+                GearUP();
+                Debug.Log("Gear Up");
+            }
+            else if (currentGear != 0 && car.carSpeed < 0.85 *GetMaxGearSpeed(currentGear - 1)  && currentGear > 2)
+            {
+                GearDOWN();
+                Debug.Log("Gear Down");
+            }
+            
+            oldCarSpeed = car.carSpeed;
         }
-        else if (car.carSpeed < 0.85 *GetMaxGearSpeed(currentGear - 1)  && currentGear > 2)
-        {
-            GearDOWN();
-        }
+        
     }
+
 
     #endregion
 
@@ -71,8 +92,38 @@ void Start(){
         if (currentGear < numOfGears-1 && gearEngaged)
         {
             gearEngaged = false;
+            Debug.Log(GetMaxGearSpeed(currentGear + 1));
+            StartCoroutine(NormalShift(currentGear + 1));
+        }
+    }
+
+    private void GearToFirst()
+    {
+        if (currentGear < numOfGears-1 && gearEngaged)
+        {
+            gearEngaged = false;
             //Debug.Log(GetMaxGearSpeed(currentGear + 1));
-            StartCoroutine(UpShiftTime(currentGear + 1));
+            StartCoroutine(NormalShift(2));
+        }
+    }
+    
+    private void GearREVERSE()
+    {
+        if (gearEngaged)
+        {
+        gearEngaged = false;
+        //Debug.Log(GetMaxGearSpeed(currentGear - 1));
+        StartCoroutine(NormalShift(0));
+        }
+    }
+
+        private void GearDOWN()
+    {
+        if (currentGear > 0 && gearEngaged)
+        {
+        gearEngaged = false;
+        Debug.Log(GetMaxGearSpeed(currentGear - 1));
+        StartCoroutine(ShiftRevMatch(currentGear - 1));
         }
     }
 
@@ -99,11 +150,15 @@ void Start(){
         float tireCircumference = car.wheels[0].tireRadius * 2 * Mathf.PI; // Assuming all tires are the same radius (Not good for dragsters)
         float metersPS = tireCircumference * wheelRPS;
         float GetMaxGearSpeed = metersPS * 3.6f; // UNIT IS KM/H
+        float dragForce = 0.26f * GetMaxGearSpeed * GetMaxGearSpeed;
+        float rollResistance = 10 * GetMaxGearSpeed;
+        float resistanceDecel = 3.6f * ((dragForce + rollResistance)*4/car.GetComponent<Rigidbody>().mass);
+        GetMaxGearSpeed = GetMaxGearSpeed - (Time.fixedDeltaTime * resistanceDecel);
 
         return GetMaxGearSpeed;
     }
 
-    private IEnumerator UpShiftTime(int shiftDirection)
+    private IEnumerator NormalShift(int shiftDirection)
     {
         currentGear = 1;
         car.Throttle = 0;
@@ -151,15 +206,7 @@ void Start(){
     }
 
 
-    private void GearDOWN()
-    {
-        if (currentGear > 0 && gearEngaged)
-        {
-        gearEngaged = false;
-        //Debug.Log(GetMaxGearSpeed(currentGear - 1));
-        StartCoroutine(ShiftRevMatch(currentGear - 1));
-        }
-    }
+
 
     public float get_ratio()
     {
@@ -168,7 +215,7 @@ void Start(){
 
         public float get_specific_ratio(int gear)
     {
-        Assert.IsTrue(gear > 0 && gear < numOfGears);
+        Assert.IsTrue(gear >= 0 && gear < numOfGears);
         return gearRatios[gear];
     }
     #endregion
