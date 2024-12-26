@@ -1,5 +1,3 @@
-using System.Collections;
-using System.Collections.Generic;
 using Baracuda.Monitoring;
 using UnityEngine;
 
@@ -8,9 +6,9 @@ public class EngineObj : MonoBehaviour
     [Header("References")]
     public CarObj car;
     [Header("Engine Params")]
-    public AnimationCurve engineCurve;
-    public float rpmLimit = 7000;
-    public float rpmLimitIdle = 800;
+    public AnimationCurve engineCurve; // The torque curve the engine will follow
+    public float rpmLimit = 7000; // Maximum possible RPM for the engine's natural operation
+    public float rpmLimitIdle = 800; // Minimum possible RPM for the engine's natural operation
 
     public float engineMoment = 0.2f;
     public float engineDrag = 0.02f;

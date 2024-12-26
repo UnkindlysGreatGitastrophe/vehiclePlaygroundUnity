@@ -1,11 +1,8 @@
 using System.Linq;
 using Baracuda.Monitoring;
-using Unity.IO.LowLevel.Unsafe;
 using UnityEngine;
-using System.Collections.Generic;
 using Unity.VisualScripting;
-using UnityEngine.Animations;
-using Palmmedia.ReportGenerator.Core.Reporting.Builders;
+
 
 public class CarObj : MonoBehaviour
 {
@@ -21,70 +18,120 @@ public class CarObj : MonoBehaviour
     public WheelObj[] poweredWheels;
     private Rigidbody rb;
 
-    [Header("BrakeInput Parameters")]
+    [Header("Brake Input Parameters")]
+
+    [Tooltip("Maximum amount of braking possible for a car, This is the same force that will be applied on e-brake compatible wheels")]
     public float maxBrakeTorque; // Maximum amount of braking possible for a car, Equals ebrake torque on ebrake wheels
+    [Tooltip("Directs the distribution of brake force to the front and back of the wheels, 1 = front brakes only, 0 = rear brakes only")]
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
+    
     [Header("Driving Assists")]
 
+    [Tooltip("Toggles Anti-Lock Brakes, efficient braking with minimal lockup")]
     public bool hasABS; // Toggles Anti Lock Brakes
+    [Tooltip("Toggles Traction Control, limits excess wheelspin")]
     public bool hasTC; // Toggles Traction Control
 
     [Header("Input")]
+
+    [Tooltip("The gas pedal!, 0 = no throttle, 1 = full throttle")]
     [Monitor] public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
-    public bool ThrottleLock; // Auto accelerate
+
+    [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
     [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
+    [Tooltip("The Spicy brake pedal, 0 = no handbrake, 1 = full handbrake")]
     public float eBrakeInput; // 0-1, 0 is no handbrake, 1 is full hand brake
+    [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
+    [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
     public bool PIDengaged; // Bool that allows the car to stablize itself in the air
+    [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
     public float steeringInput; // -1 to 1, left is -1, 0 is straight, 1 is right
-    public float clampedSteeringAngle; // The maximum steering angle a car can do when under speed or spinning out
+    [Tooltip("The maximum steering angle a car can do in a given situation, inversely affected by top speed for smooth driving at speeds")]
+    public float clampedSteeringAngle; // The maximum steering angle a car can do when under speed or spinning out\
+    [Tooltip("The maximum steering angle a car can possibly do")]
     public float maxSteeringAngle = 35f; // When the car is slow enough, or spinning out, this is as far as the wheels can turns
+    [Tooltip("The minimum steering angle a car can possibly do")]
     public float minSteeringAngle = 15f; // When the car is fast enough, this is as far as the wheels can turns
-    public SteeringLock steeringLock; // Debugging
+    [Tooltip("Rate of which the steering angle approaches minimum steering angle")]
+    public float k = 0.5f; // Rate at which steering angle approaches min steering angle
+    [Tooltip("When true, the gas and brake input is inverted to allow smoother gameplay when using automatic transmissions (Does NOT apply to manuals)")]
     public bool AutoReverseMode = false; // Reverse mode that inverts input when activated (Automatic Gearbox only)
+
+    [Tooltip("DEBUG: Toggles full steering lock")]
+    public SteeringLock steeringLock; // Debugging
+    [Tooltip("DEBUG: Toggles auto acceleration, will break shifting by keeping throttle on")]
+    public bool ThrottleLock; // Auto accelerate
 
 
     [Header("DriveTrain Parameters")]
+    [Tooltip("Determines Drivetrain type (RWD, AWD, FWD)")]
     public DriveType driveType = DriveType.RWD; // Determines Drivetrain type (RWD, AWD, FWD?)
-
+    [Tooltip("Distributes torque to the front and rear wheel axles, approach 1 for a rear wheel bias, approach 0 for a front wheel bias (NOTE: this variable is only relevant when the driveType is AWD)")]
     public float torqueDistribution = 0.6f; // Option Applicable when AWD is selected, otherwise the power is distributed only to rear or front wheels.
+    [Tooltip("Ratio of torque distribution, first element is for the rear wheels, 2nd element is for the front wheels")]
     public float[] torqueRatio = new float[2]; // Ratio of torque distribution
-    public float k = 0.5f; // Rate at which steering angle approaches min steering angle
+
 
     [Header("AeroDynamics")]
+    [Tooltip("A downward force that pushes the car into the ground for extra traction, increases with speed")]
     public float downForce; // Downforce spread across the car's wheels
+    [Tooltip("A constant, similiar to real life calculations")]
     public float airDensity; // Constant
+    [Tooltip("The maximum possible downforce achieveable")]
     public float maxAero; // Maximum Aero Downforce possible
+    [Tooltip("Rate of which downforce is gained with speed")]
     public float aeroRate; // Rate of which Downforce is gained with speed
     [Header("Stunts")]
+    [Tooltip("Rate of which the car can rotate in the air")]
     public float airRotationAmount = 50f; // Rate of which the rotation of the car is performed when in the air
+    [Tooltip("Stunts!")]
     public int numFrontFlips = 0; // Stunt Count
-     public int numBackFlips = 0;
-     public int numLeftBarrelRolls = 0;
-     public int numRightBarrelRolls = 0;
-     public int numLeft360s = 0;
-     public int numRight360s = 0;
-     public Vector3 totalRotation = Vector3.zero; // Total rotation performed in the car relative to a lastRotation
-     public Quaternion lastRotation; // The pivot point of which total rotation is calclated off of
-     private Vector3 angleDiffs; // The difference between the current and lastRotation
+    [Tooltip("Stunts!")]
+    public int numBackFlips = 0;
+    [Tooltip("Stunts!")]
+    public int numLeftBarrelRolls = 0;
+    [Tooltip("Stunts!")]
+    public int numRightBarrelRolls = 0;
+    [Tooltip("Stunts!")]
+    public int numLeft360s = 0;
+    [Tooltip("Stunts!")]
+    public int numRight360s = 0;
+    [Tooltip("Total amount of rotation made in a particular axis relative to an original rotation")]
 
+    public Vector3 totalRotation = Vector3.zero; // Total rotation performed in the car relative to a lastRotation
+    [Tooltip("The pivot point of which total rotation is calclated off of")]
+    public Quaternion lastRotation; // The pivot point of which total rotation is calclated off of
+    [Tooltip("The Euler representation of the difference between the current and last rotation")]
+    private Vector3 angleDiffs; // The difference between the current and lastRotation
+    [Tooltip("When true, the last rotation prior to taking a jump will be stored for tracking stunts")]
     bool originInit = false; // Bool that initializes the lastRotation the moment we catch air
 
     [Header("PID")]
+    [Tooltip("How quick the car rotation approaches the target rotation")]
     public float proportionalGain = 10f; // How quick the rotation approaches the target
+    [Tooltip("How exact we want the rotation to be at the target (Preferable to set this relatively low to the other gain variables)")]
     public float integralGain = 2f; // How exact we want the rotation to be at the target
+    [Tooltip("How quickly the car rotation slows as it reaches target rotation")]
     public float derivativeGain = 2f; // How quickly the rotiation slows as it reaches target
+    [Tooltip("Stores the last error for derivative gain calculation")]
     Vector3 errorLast = Vector3.zero;
+    [Tooltip("Stores the last integration for integral gain calculation")]
     Vector3 integrationStored = Vector3.zero;
     RaycastHit RaycastDir; // Data to Store RayCast collisions
 
 
     [Header("Output")]
+    [Tooltip("Clutch Torque that holds the clutch plates together, and keep them spinning at the same rate as much as possible")]
     [Monitor] public float Tc = 0; // Clutch Torque, produced from balancing the engine speed and the transmission speed together, if the speeds are too much, then the clutch is disconnected, and the Clutch Torque is 0
+    [Tooltip("Torque produced from the Gearbox ratio and final drive gear that gets sent to each axle")]
     [Monitor] public float torqueToAxle = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
+    [Tooltip("Measured in KM/H")]
     [Monitor] public float carSpeed = 0; // Measured in KM/H
+    [Tooltip("Average Slip Angle of rear wheels")]
     public float avgBackSlipAngle; // Average Back Slip Angles
+    [Tooltip("Average Slip Ratio of rear wheels")]
     public float avgBackSlipRatio; // Average Back Slip Ratio
 
 
@@ -172,6 +219,7 @@ public class CarObj : MonoBehaviour
         }
     }
     */
+
     void FixedUpdate()
     {
         // Handle Input Here:

@@ -462,7 +462,6 @@ MonoBehaviour:
   hasABS: 1
   hasTC: 1
   Throttle: 0
-  ThrottleLock: 0
   BrakeInput: 0
   eBrakeInput: 0
   allowBarrelRoll: 0
@@ -471,14 +470,15 @@ MonoBehaviour:
   clampedSteeringAngle: 35
   maxSteeringAngle: 35
   minSteeringAngle: 22
-  steeringLock: 0
+  k: 0.03
   AutoReverseMode: 0
+  steeringLock: 0
+  ThrottleLock: 0
   driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
   - 0
   - 0
-  k: 0.03
   downForce: 0
   airDensity: 1.2
   maxAero: 2000
@@ -4003,7 +4003,6 @@ MonoBehaviour:
   hasABS: 1
   hasTC: 1
   Throttle: 0
-  ThrottleLock: 0
   BrakeInput: 0
   eBrakeInput: 0
   allowBarrelRoll: 0
@@ -4012,14 +4011,15 @@ MonoBehaviour:
   clampedSteeringAngle: 35
   maxSteeringAngle: 35
   minSteeringAngle: 22
-  steeringLock: 0
+  k: 0.03
   AutoReverseMode: 0
+  steeringLock: 0
+  ThrottleLock: 0
   driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
   - 0
   - 0
-  k: 0.03
   downForce: 0
   airDensity: 1.2
   maxAero: 2000
@@ -6986,7 +6986,6 @@ MonoBehaviour:
   hasABS: 0
   hasTC: 0
   Throttle: 0
-  ThrottleLock: 0
   BrakeInput: 0
   eBrakeInput: 0
   allowBarrelRoll: 0
@@ -6995,14 +6994,15 @@ MonoBehaviour:
   clampedSteeringAngle: 35
   maxSteeringAngle: 35
   minSteeringAngle: 22
-  steeringLock: 0
+  k: 0.03
   AutoReverseMode: 0
-  driveType: 2
+  steeringLock: 0
+  ThrottleLock: 0
+  driveType: 1
   torqueDistribution: 0.5
   torqueRatio:
   - 0
   - 0
-  k: 0.03
   downForce: 0
   airDensity: 1.2
   maxAero: 2000
@@ -7056,7 +7056,7 @@ Rigidbody:
   m_Mass: 1500
   m_Drag: 0
   m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0.4}
+  m_CenterOfMass: {x: 0, y: 0, z: 0}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
@@ -7065,7 +7065,7 @@ Rigidbody:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_ImplicitCom: 0
+  m_ImplicitCom: 1
   m_ImplicitTensor: 1
   m_UseGravity: 1
   m_IsKinematic: 0
