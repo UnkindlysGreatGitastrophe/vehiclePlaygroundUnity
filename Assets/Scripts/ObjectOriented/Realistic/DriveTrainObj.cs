@@ -60,7 +60,7 @@ public class DriveTrainObj : MonoBehaviour
         {
             DriveShaftTorque = car.Tc * car.gearBox.get_ratio();
             DriveShaftAccel = DriveShaftTorque / DriveShaftInertia;
-            car.torqueToWheel = car.Tc * car.gearBox.get_ratio() * differentialFinalGearRatio / poweredWheels;
+            car.torqueToAxle = car.Tc * car.gearBox.get_ratio() * differentialFinalGearRatio / poweredWheels;
             // DriveShaftAngularVel += DriveShaftAngularVel + DriveShaftAccel * Time.fixedDeltaTime; // Broken
         }
     }
@@ -76,18 +76,18 @@ public class DriveTrainObj : MonoBehaviour
          float torqueDiffRL = car.wheels[3].ReactionTorqueToWheel - car.wheels[2].ReactionTorqueToWheel; // Torque difference of left - right reaction torque
          if (car.wheels[2].ReactionTorqueToWheel / car.wheels[3].ReactionTorqueToWheel > torqueBias && torqueDiffLR > preLoadTorque) // Left wheel torque > right wheel torque
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel - preLoadTorque);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel + preLoadTorque);
+                 car.wheels[2].applyTorqueToWheels(car.torqueToAxle - preLoadTorque);
+                 car.wheels[3].applyTorqueToWheels(car.torqueToAxle + preLoadTorque);
              }
          else if (car.wheels[3].ReactionTorqueToWheel / car.wheels[2].ReactionTorqueToWheel > torqueBias && torqueDiffRL > preLoadTorque) // Right wheel torque > Left wheel torque
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel + preLoadTorque);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel - preLoadTorque);
+                 car.wheels[2].applyTorqueToWheels(car.torqueToAxle + preLoadTorque);
+                 car.wheels[3].applyTorqueToWheels(car.torqueToAxle - preLoadTorque);
              }
          else
              {
-                 car.wheels[2].applyTorqueToWheels(car.torqueToWheel);
-                 car.wheels[3].applyTorqueToWheels(car.torqueToWheel);
+                 car.wheels[2].applyTorqueToWheels(car.torqueToAxle);
+                 car.wheels[3].applyTorqueToWheels(car.torqueToAxle);
              }
      
     }

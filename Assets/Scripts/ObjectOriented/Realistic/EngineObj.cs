@@ -24,7 +24,7 @@ public class EngineObj : MonoBehaviour
     public float initialTorque;
 
     public float dragTorque; // Resistance torque opposing the initial torque the car engine generates
-    public float torque_out; // Output torque of the engine itself
+    [Monitor] public float torque_out; // Output torque of the engine itself
     public float clutch_torque;
 
 

@@ -32,6 +32,8 @@ public class DifferentialObj : MonoBehaviour
     public float maxTorqueTransfer;
     public float lockTorque;
 
+    [Monitor] public float torqueToWheel;
+
 
 
 
@@ -64,8 +66,9 @@ public class DifferentialObj : MonoBehaviour
         }
         else
         {
-            connectedWheels[0].applyTorqueToWheels(car.torqueToWheel/2); // Apply torque "evenly", the consequence is that one wheel spins fastest, due to having the least friction compared to every other car.
-            connectedWheels[1].applyTorqueToWheels(car.torqueToWheel/2);
+            torqueToWheel = car.torqueToAxle/2;
+            connectedWheels[0].applyTorqueToWheels(torqueToWheel); // Apply torque "evenly", the consequence is that one wheel spins fastest, due to having the least friction compared to every other car.
+            connectedWheels[1].applyTorqueToWheels(torqueToWheel);
             // DriveShaftAngularVel += DriveShaftAngularVel + DriveShaftAccel * Time.fixedDeltaTime; // Broken
         }
     }
@@ -93,22 +96,22 @@ public class DifferentialObj : MonoBehaviour
                 float a = connectedWheels[1].ReactionTorqueToWheel * connectedWheels[0].wheelInertia;
                 float b = connectedWheels[0].ReactionTorqueToWheel * connectedWheels[1].wheelInertia;
                 float c = connectedWheels[0].wheelInertia * connectedWheels[1].wheelInertia * (connectedWheels[0].wheelAngularVelocity - connectedWheels[1].wheelAngularVelocity) / Time.fixedDeltaTime;
-                isPowered = Math.Sign(car.torqueToWheel) > 0;
+                isPowered = Math.Sign(car.torqueToAxle) > 0;
                 currentDiffRatio = Mathf.Max(isPowered ? Mathf.Cos(powerAngle * Mathf.Deg2Rad) : Mathf.Cos(coastAngle * Mathf.Deg2Rad)); // This is where the salisbury comes in, due to the design, we are using cosine angles to get the diff ratio
-                maxTorqueTransfer = Mathf.Max(preLoadTorque, currentDiffRatio * (1+2*clutchPacks) * Mathf.Abs(car.torqueToWheel)); // This is what we use to clamp the offset torque to add in to the clutch toque
+                maxTorqueTransfer = Mathf.Max(preLoadTorque, currentDiffRatio * (1+2*clutchPacks) * Mathf.Abs(car.torqueToAxle)); // This is what we use to clamp the offset torque to add in to the clutch toque
 
                 lockTorque = (a - b + c) / (connectedWheels[0].wheelInertia + connectedWheels[1].wheelInertia); // The algebraic equation for solving the locktorque required to even out the wheels.
                 lockTorque = Mathf.Clamp(lockTorque , -maxTorqueTransfer , maxTorqueTransfer);
-                connectedWheels[0].applyTorqueToWheels(car.torqueToWheel-lockTorque);
-                connectedWheels[1].applyTorqueToWheels(car.torqueToWheel+lockTorque);
+                connectedWheels[0].applyTorqueToWheels(car.torqueToAxle-lockTorque);
+                connectedWheels[1].applyTorqueToWheels(car.torqueToAxle+lockTorque);
             }
             else
             {
                 // This simply tries to keep the wheel differences as tight as possible, needs a low substep to work right
                 float halfAngularVel = (connectedWheels[0].wheelAngularVelocity - connectedWheels[0+1].wheelAngularVelocity) * 0.5f / Time.fixedDeltaTime;
                 float lockedTorque = halfAngularVel * connectedWheels[0].wheelInertia; 
-                connectedWheels[0].applyTorqueToWheels(car.torqueToWheel * 0.5f - lockedTorque);
-                connectedWheels[1].applyTorqueToWheels(car.torqueToWheel * 0.5f + lockedTorque);
+                connectedWheels[0].applyTorqueToWheels(car.torqueToAxle * 0.5f - lockedTorque);
+                connectedWheels[1].applyTorqueToWheels(car.torqueToAxle * 0.5f + lockedTorque);
 
             }
             

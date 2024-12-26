@@ -496,9 +496,8 @@ MonoBehaviour:
   integralGain: 2
   derivativeGain: 2
   Tc: 0
-  torqueToWheel: 0
+  torqueToAxle: 0
   carSpeed: 0
-  avgFrontSlipAngle: 0
   avgBackSlipAngle: 0
   avgBackSlipRatio: 0
 --- !u!4 &77935563 stripped
@@ -1534,6 +1533,7 @@ MonoBehaviour:
   currentDiffRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
+  torqueToWheel: 0
 --- !u!1001 &245650277
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -1960,7 +1960,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   carRigidBody: {fileID: 0}
-  springRate: 750
+  springRate: 500
   damperRate: 46
   suspensionRestLength: 0.66
   Fz: 0
@@ -2192,7 +2192,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   carRigidBody: {fileID: 0}
-  springRate: 750
+  springRate: 500
   damperRate: 46
   suspensionRestLength: 0.66
   Fz: 0
@@ -4037,9 +4037,8 @@ MonoBehaviour:
   integralGain: 2
   derivativeGain: 2
   Tc: 0
-  torqueToWheel: 0
+  torqueToAxle: 0
   carSpeed: 0
-  avgFrontSlipAngle: 0
   avgBackSlipAngle: 0
   avgBackSlipRatio: 0
 --- !u!1001 &899708490
@@ -4458,7 +4457,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   carRigidBody: {fileID: 0}
-  springRate: 500
+  springRate: 750
   damperRate: 30
   suspensionRestLength: 0.66
   Fz: 0
@@ -4521,6 +4520,7 @@ MonoBehaviour:
   currentDiffRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
+  torqueToWheel: 0
 --- !u!1 &948500476
 GameObject:
   m_ObjectHideFlags: 0
@@ -5225,6 +5225,7 @@ MonoBehaviour:
   currentDiffRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
+  torqueToWheel: 0
 --- !u!1 &1247639592
 GameObject:
   m_ObjectHideFlags: 0
@@ -5321,7 +5322,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   carRigidBody: {fileID: 0}
-  springRate: 500
+  springRate: 750
   damperRate: 30
   suspensionRestLength: 0.66
   Fz: 0
@@ -6583,6 +6584,7 @@ MonoBehaviour:
   currentDiffRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
+  torqueToWheel: 0
 --- !u!4 &1786820423 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2170347634725471409, guid: 60f999416f287e34d8b55b7dc279ba8f, type: 3}
@@ -6995,7 +6997,7 @@ MonoBehaviour:
   minSteeringAngle: 22
   steeringLock: 0
   AutoReverseMode: 0
-  driveType: 1
+  driveType: 2
   torqueDistribution: 0.5
   torqueRatio:
   - 0
@@ -7018,9 +7020,8 @@ MonoBehaviour:
   integralGain: 0
   derivativeGain: 7.5
   Tc: 0
-  torqueToWheel: 0
+  torqueToAxle: 0
   carSpeed: 0
-  avgFrontSlipAngle: 0
   avgBackSlipAngle: 0
   avgBackSlipRatio: 0
 --- !u!65 &2047399143
@@ -7055,7 +7056,7 @@ Rigidbody:
   m_Mass: 1500
   m_Drag: 0
   m_AngularDrag: 0.05
-  m_CenterOfMass: {x: 0, y: 0, z: 0}
+  m_CenterOfMass: {x: 0, y: 0, z: 0.4}
   m_InertiaTensor: {x: 1, y: 1, z: 1}
   m_InertiaRotation: {x: 0, y: 0, z: 0, w: 1}
   m_IncludeLayers:
@@ -7064,9 +7065,9 @@ Rigidbody:
   m_ExcludeLayers:
     serializedVersion: 2
     m_Bits: 0
-  m_ImplicitCom: 1
+  m_ImplicitCom: 0
   m_ImplicitTensor: 1
-  m_UseGravity: 0
+  m_UseGravity: 1
   m_IsKinematic: 0
   m_Interpolate: 0
   m_Constraints: 0

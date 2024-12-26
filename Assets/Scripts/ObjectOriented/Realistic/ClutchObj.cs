@@ -12,16 +12,16 @@ public class ClutchObj : MonoBehaviour
 
     [Header("Clutch Lock")]
     public bool toggleManualClutch = false;
-    [Monitor] public float clutchLock;
+    public float clutchLock;
 
 
     [Header("Clutch B1 (Connected to Engine)")]
-    [SerializeField] [Monitor] private float w1;
+    [SerializeField] private float w1;
     [SerializeField] private float t1;
     [SerializeField] private float i1;
 
     [Header("Clutch B2 (Connected to DriveShaft)")]
-    [SerializeField] [Monitor] private float w2;
+    [SerializeField] private float w2;
     [SerializeField] private float t2;
     [SerializeField] private float i2;
 
