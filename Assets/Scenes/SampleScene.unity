@@ -1520,20 +1520,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 871312167}
   connectedWheels: []
-  DriveShaftInertia: 5
-  DriveShaftTorque: 0
-  DriveShaftAccel: 0
-  DriveShaftAngularVel: 0
   difType: 2
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
   clutchPacks: 5
+  powerStiffness: 0.2
+  coastStiffness: 0.2
+  currentDiffStiffness: 0
+  powerRatio: 0.2
+  coastRatio: 0.2
   isPowered: 0
   currentDiffRatio: 0
+  torqueRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
-  torqueToWheel: 0
+  wheelSpeedDiff: 0
+  torqueToLeftWheel: 0
+  torqueToRightWheel: 0
 --- !u!1001 &245650277
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -4269,8 +4273,6 @@ MonoBehaviour:
   w2: 0
   t2: 0
   i2: 0
-  clutchTorq: 0
-  clutchDampening: 0.7
   clutchCapacity: 1.3
   clutchStiffness: 500
   clutchMaxTorq: 0
@@ -4507,20 +4509,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 73846800}
   connectedWheels: []
-  DriveShaftInertia: 5
-  DriveShaftTorque: 0
-  DriveShaftAccel: 0
-  DriveShaftAngularVel: 0
   difType: 2
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
   clutchPacks: 5
+  powerStiffness: 0.2
+  coastStiffness: 0.2
+  currentDiffStiffness: 0
+  powerRatio: 0.2
+  coastRatio: 0.2
   isPowered: 0
   currentDiffRatio: 0
+  torqueRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
-  torqueToWheel: 0
+  wheelSpeedDiff: 0
+  torqueToLeftWheel: 0
+  torqueToRightWheel: 0
 --- !u!1 &948500476
 GameObject:
   m_ObjectHideFlags: 0
@@ -4559,8 +4565,6 @@ MonoBehaviour:
   w2: 0
   t2: 0
   i2: 0
-  clutchTorq: 0
-  clutchDampening: 0.7
   clutchCapacity: 1.3
   clutchStiffness: 500
   clutchMaxTorq: 0
@@ -5212,20 +5216,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   connectedWheels: []
-  DriveShaftInertia: 5
-  DriveShaftTorque: 0
-  DriveShaftAccel: 0
-  DriveShaftAngularVel: 0
   difType: 0
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
   clutchPacks: 5
+  powerStiffness: 0.2
+  coastStiffness: 0.2
+  currentDiffStiffness: 0
+  powerRatio: 0.2
+  coastRatio: 0.2
   isPowered: 0
   currentDiffRatio: 0
+  torqueRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
-  torqueToWheel: 0
+  wheelSpeedDiff: 0
+  torqueToLeftWheel: 0
+  torqueToRightWheel: 0
 --- !u!1 &1247639592
 GameObject:
   m_ObjectHideFlags: 0
@@ -5457,7 +5465,7 @@ MonoBehaviour:
   - 1.5
   shiftTime: 0.2
   finalDriveGear: 5
-  Transmissiontype: 1
+  Transmissiontype: 0
   currentGear: 2
   gearEngaged: 1
 --- !u!1 &1413363443
@@ -6571,20 +6579,24 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   car: {fileID: 2047399142}
   connectedWheels: []
-  DriveShaftInertia: 5
-  DriveShaftTorque: 0
-  DriveShaftAccel: 0
-  DriveShaftAngularVel: 0
-  difType: 0
+  difType: 2
   preLoadTorque: 70
   powerAngle: 85
   coastAngle: 45
-  clutchPacks: 5
+  clutchPacks: 1
+  powerStiffness: 0.5
+  coastStiffness: 0.2
+  currentDiffStiffness: 0
+  powerRatio: 1.5
+  coastRatio: 1.5
   isPowered: 0
   currentDiffRatio: 0
+  torqueRatio: 0
   maxTorqueTransfer: 0
   lockTorque: 0
-  torqueToWheel: 0
+  wheelSpeedDiff: 0
+  torqueToLeftWheel: 0
+  torqueToRightWheel: 0
 --- !u!4 &1786820423 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 2170347634725471409, guid: 60f999416f287e34d8b55b7dc279ba8f, type: 3}
@@ -7156,8 +7168,6 @@ MonoBehaviour:
   w2: 0
   t2: 0
   i2: 0
-  clutchTorq: 0
-  clutchDampening: 0.7
   clutchCapacity: 1.3
   clutchStiffness: 500
   clutchMaxTorq: 0

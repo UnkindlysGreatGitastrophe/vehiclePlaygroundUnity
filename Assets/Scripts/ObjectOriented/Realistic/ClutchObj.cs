@@ -11,26 +11,35 @@ public class ClutchObj : MonoBehaviour
     public CarObj car;
 
     [Header("Clutch Lock")]
-    public bool toggleManualClutch = false;
-    public float clutchLock;
+    [Tooltip("Enables manual clutch management")]
+    public bool toggleManualClutch = false; // Largely Experimental
+    [Tooltip("This represents that amount of connection the engine has with the transmission via the clutch plate. Bounded by 0 <= clutchLock <= 1, where 0 represents no connection and 1 represents full connection")]
+    public float clutchLock; // Range is 0 (Disconnected) to 1, fully connected to engine and transmission
 
 
     [Header("Clutch B1 (Connected to Engine)")]
+    [Tooltip("The Engine's Angular Velocity")]
+
     [SerializeField] private float w1;
+    [Tooltip("The Engine's Output Torque")]
     [SerializeField] private float t1;
+    [Tooltip("The Engine's Moment of Inertia")]
     [SerializeField] private float i1;
 
     [Header("Clutch B2 (Connected to DriveShaft)")]
+    [Tooltip("Average Angular Velocity of the powered wheels")]
     [SerializeField] private float w2;
+    [Tooltip("The Total Reaction Torque provided by the Powered Wheels of the car")]
     [SerializeField] private float t2;
+    [Tooltip("The Moment of Inertia of the Transmission")]
     [SerializeField] private float i2;
 
     [Header("Clutch V2 parameters")]
-
-    [SerializeField] private float clutchTorq;
-    [SerializeField] private float clutchDampening = 0.7f;
-    [SerializeField] private float clutchCapacity = 1.3f;
-    [SerializeField] private float clutchStiffness = 500f;
+    [Tooltip("Torque capacity. It is the amount of torque that can be transmitted by the clutch when it's slipping or fully closed.")]
+    [SerializeField] private float clutchCapacity = 1.3f; // The capacity factor of the clutch, contributes to the max torque a clutch can manage
+    [Tooltip("The stiffness of the clutch.")]
+    [SerializeField] private float clutchStiffness = 500f; // The Stiffness of the clutch, also contributes to the max torque.
+    [Tooltip("Maximum amount of torque that the clutch can feed into the engine and gearbox, it is equal to: clutch stiffness * clutch capacity")]
     [SerializeField] private float clutchMaxTorq;
 
 
