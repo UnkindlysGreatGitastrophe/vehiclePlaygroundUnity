@@ -167,6 +167,57 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 19020383778bf03499e755bf46c7637d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!1 &9875403
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 9875404}
+  - component: {fileID: 9875405}
+  m_Layer: 0
+  m_Name: Turbo
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &9875404
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9875403}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2047399141}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &9875405
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 9875403}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 52c2b3cbe4fe2e44ba7ea57bb6f09b8b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  car: {fileID: 2047399142}
+  boostPSI: 6
+  type: 1
+  inertia: 0.1
+  valveInertia: 0.05
+  psiPerRPM: 0
+  pressure: 0
 --- !u!1 &17051331
 GameObject:
   m_ObjectHideFlags: 0
@@ -446,6 +497,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   engine: {fileID: 1842259562}
+  induction: {fileID: 0}
   clutch: {fileID: 2053017464}
   gearBox: {fileID: 1332418138}
   differential: []
@@ -496,6 +548,7 @@ MonoBehaviour:
   integralGain: 2
   derivativeGain: 2
   Tc: 0
+  inductionTorque: 0
   torqueToAxle: 0
   carSpeed: 0
   avgBackSlipAngle: 0
@@ -850,164 +903,6 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 782f532c8237991408685b7884f81f4a, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  suspensionRestLength: 0.45
-  tireMass: 12
-  steeringFactor: 01000000010000000000000000000000
-  springRate: 36787.5
-  damperRate: 1226.25
-  maxSteeringAngle: 34
-  tireGripFactorFront: 1
-  tireGripFactorBack: 1
-  tireRadius: 0.45
-  wheels:
-  - {fileID: 1350769075}
-  - {fileID: 1158782644}
-  - {fileID: 1537344859}
-  - {fileID: 826935759}
-  tireOrientation:
-  - 0
-  - 180
-  - 0
-  - 180
-  steeringVelRatio: []
-  curveTireGripFactor: []
-  isFrontWheel: 01010000
-  gripCurveFrontWheels:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 0.38
-      value: 0.90909094
-      inSlope: -0.7272725
-      outSlope: -0.7272725
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 0.5
-      value: 0.27272728
-      inSlope: -1.1730206
-      outSlope: -1.1730206
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0.09090909
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  gripCurveBackWheels:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 1
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 0.306
-      value: 0.199295
-      inSlope: -0.18438156
-      outSlope: -0.18438156
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 1
-      value: 0.15319963
-      inSlope: 0
-      outSlope: 0
-      tangentMode: 136
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  wheelAngularVelocity: []
-  Speed: 0
-  forcePerTire: []
-  Throttle: 0
-  Brake: 0
-  engineCurve:
-    serializedVersion: 2
-    m_Curve:
-    - serializedVersion: 3
-      time: 0
-      value: 400
-      inSlope: 0.08660241
-      outSlope: 0.08660241
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 3464.1067
-      value: 700
-      inSlope: 0.020351015
-      outSlope: 0.020351015
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0.33333334
-    - serializedVersion: 3
-      time: 10000
-      value: 400
-      inSlope: -0.045900382
-      outSlope: -0.045900382
-      tangentMode: 34
-      weightedMode: 0
-      inWeight: 0.33333334
-      outWeight: 0
-    m_PreInfinity: 2
-    m_PostInfinity: 2
-    m_RotationOrder: 4
-  engineRPM: 0
-  rpmLimit: 6000
-  rpmLimitIdle: 250
-  engineMoment: 0.025
-  engineDrag: 0.03
-  engineBrake: 10
-  dragTorque: 0
-  torque_out: 0
-  engineAngularVelocity: 0
-  numOfGears: 0
-  gearRatios:
-  - -4
-  - 0
-  - 4
-  - 2
-  currentGear: 1
-  netDrive: 0
-  driveForce: []
-  finalDriveGear: 3.6
-  netForce: 0
-  brakeStrength: 6500
-  brakeForce: []
-  brakeBias: 1
 --- !u!1 &126901748
 GameObject:
   m_ObjectHideFlags: 0
@@ -3991,6 +3886,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   engine: {fileID: 1562774180}
+  induction: {fileID: 0}
   clutch: {fileID: 926752183}
   gearBox: {fileID: 1767474583}
   differential: []
@@ -4041,6 +3937,7 @@ MonoBehaviour:
   integralGain: 2
   derivativeGain: 2
   Tc: 0
+  inductionTorque: 0
   torqueToAxle: 0
   carSpeed: 0
   avgBackSlipAngle: 0
@@ -6984,6 +6881,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   engine: {fileID: 409044293}
+  induction: {fileID: 9875405}
   clutch: {fileID: 948500477}
   gearBox: {fileID: 1386655909}
   differential: []
@@ -7032,6 +6930,7 @@ MonoBehaviour:
   integralGain: 0
   derivativeGain: 7.5
   Tc: 0
+  inductionTorque: 0
   torqueToAxle: 0
   carSpeed: 0
   avgBackSlipAngle: 0
@@ -7470,6 +7369,9 @@ PrefabInstance:
     - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 60f999416f287e34d8b55b7dc279ba8f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1243493346}
+    - targetCorrespondingSourceObject: {fileID: -8679921383154817045, guid: 60f999416f287e34d8b55b7dc279ba8f, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 9875404}
     - targetCorrespondingSourceObject: {fileID: 2170347634725471409, guid: 60f999416f287e34d8b55b7dc279ba8f, type: 3}
       insertIndex: -1
       addedObject: {fileID: 1212837123}

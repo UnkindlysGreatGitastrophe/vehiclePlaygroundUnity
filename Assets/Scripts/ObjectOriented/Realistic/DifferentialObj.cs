@@ -47,19 +47,19 @@ public class DifferentialObj : MonoBehaviour
     public float currentDiffRatio; // This will be either coast or the power angle
 
     [Tooltip("Displays the current ratio of the greater torque wheel divided by the lesser torque wheel")]
-    [Monitor] public float torqueRatio;
+    public float torqueRatio;
     [Tooltip("The maximum torque that can be used to restrict a differential at a given moment")]
     public float maxTorqueTransfer; // The maximum torque that can be used to restrict a differential
     [Tooltip("The torque that will be used to restrict one side of the differential and boost the other")]
     public float lockTorque; // The lock torque that will be applied in the end, bounded by the maxTorqueTransfer variable
 
     [Tooltip("The difference in wheel speed between the 2 tires, negative implies the right wheel is spinning faster than the left, and vice versa (Units in RAD/S)")]
-    [Monitor] public float wheelSpeedDiff;
+    public float wheelSpeedDiff;
 
     [Tooltip("The torque originating from the gearbox that will be applied to each wheel")]
-    [Monitor] public float torqueToLeftWheel;
+    public float torqueToLeftWheel;
     [Tooltip("The torque originating from the gearbox that will be applied to each wheel")]
-    [Monitor] public float torqueToRightWheel;
+    public float torqueToRightWheel;
 
 
 

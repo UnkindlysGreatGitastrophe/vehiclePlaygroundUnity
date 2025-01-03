@@ -2,6 +2,7 @@ using System.Linq;
 using Baracuda.Monitoring;
 using UnityEngine;
 using Unity.VisualScripting;
+using System.Text.RegularExpressions;
 
 
 public class CarObj : MonoBehaviour
@@ -11,6 +12,7 @@ public class CarObj : MonoBehaviour
 
     [Header("References")]
     public EngineObj engine;
+    public ForcedInductionObj induction;
     public ClutchObj clutch;
     public GearBoxObj gearBox;
     public DifferentialObj[] differential;
@@ -124,6 +126,8 @@ public class CarObj : MonoBehaviour
     [Header("Output")]
     [Tooltip("Clutch Torque that holds the clutch plates together, and keep them spinning at the same rate as much as possible")]
     [Monitor] public float Tc = 0; // Clutch Torque, produced from balancing the engine speed and the transmission speed together, if the speeds are too much, then the clutch is disconnected, and the Clutch Torque is 0
+    [Tooltip("Torque produced from a forced induction system")] 
+    [Monitor] public float inductionTorque;
     [Tooltip("Torque produced from the Gearbox ratio and final drive gear that gets sent to each axle")]
     [Monitor] public float torqueToAxle = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
@@ -133,6 +137,8 @@ public class CarObj : MonoBehaviour
     public float avgBackSlipAngle; // Average Back Slip Angles
     [Tooltip("Average Slip Ratio of rear wheels")]
     public float avgBackSlipRatio; // Average Back Slip Ratio
+    
+    
 
 
 
@@ -228,6 +234,15 @@ public class CarObj : MonoBehaviour
         GetDownForce();
         // Car Operation begins here:
         engine.engineOperation(); // Function for running the engine
+        if (induction != null)
+        {
+            if (induction.type == ForcedInductionObj.ForcedInductionType.TURBO)
+                induction.calculateTurboPSI();
+            else if (induction.type == ForcedInductionObj.ForcedInductionType.SUPERCHARGE)
+                induction.calculateSuperChargePSI();
+            inductionTorque = induction.convertPSItoTorque();
+            engine.torque_out += inductionTorque;
+        }
 		if(gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
 			Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
         else
