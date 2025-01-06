@@ -81,7 +81,7 @@ public class GearBoxObj : MonoBehaviour
                 GearToFirst(); // Switch to first gear
                 // Debug.Log("Gear To First");
             }
-            else if (car.carSpeed >= Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+            else if (car.carSpeed >= 0.98f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
             {
                 GearUP();
                 //Debug.Log("Gear Up");
@@ -106,7 +106,7 @@ public class GearBoxObj : MonoBehaviour
         if (currentGear < numOfGears-1 && gearEngaged) // Boundary checking (0 <= gear < numOfGears), also check if the gear is actually engaged and clutch is connected
         {
             //gearEngaged = false; // Disengages the clutch from the car, disconnects the flow of torque from engine to gearbox
-            //Debug.Log(GetMaxGearSpeed(currentGear + 1)); 
+            Debug.Log(GetMaxGearSpeed(currentGear + 1)); 
             StartCoroutine(NormalShift(currentGear + 1)); // Begin the shifting process
         }
     }
@@ -135,7 +135,7 @@ public class GearBoxObj : MonoBehaviour
     {
         if (currentGear > 0 && gearEngaged) // Boundary check, check if gear is engaged
         {
-        //Debug.Log(GetMaxGearSpeed(currentGear - 1));
+        Debug.Log(GetMaxGearSpeed(currentGear - 1));
         StartCoroutine(ShiftRevMatch(currentGear - 1)); // Attempt to rev match the shift (Quicker than normal process, but may not always complete)
         }
     }

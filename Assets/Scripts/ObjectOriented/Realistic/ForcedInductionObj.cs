@@ -21,6 +21,7 @@ public class ForcedInductionObj : MonoBehaviour
 
     [Header("TurboCharger Output")]
     [Monitor] public float pressure;
+    [Monitor] public float turboTorque;
 
     void Start()
     {
@@ -49,6 +50,8 @@ public class ForcedInductionObj : MonoBehaviour
 
     public float convertPSItoTorque()
     {
-        return (car.Throttle*pressure+14.7f)/14.7f;
+
+        turboTorque = (car.Throttle*pressure+14.7f)/14.7f;
+        return turboTorque;
     }
 }
