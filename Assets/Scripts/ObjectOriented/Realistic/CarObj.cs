@@ -125,24 +125,24 @@ public class CarObj : MonoBehaviour
 
     [Header("Nitro Properties")]
 
-    [Monitor] public float nitroValue = 0;
-    [Monitor] public float nitroOverBoostValue = 0;
-    [Monitor] public float nitroDelay = 0f;
-    public float nitroDelayTime = 0.4f;
-    public float nitroOverBoostDelayTime = 1.5f;
+    [Tooltip("The time it takes to be able to reactivate nitro once the player lays off the boost")]
+    [Monitor] public float nitroDelay = 0f; // The time it takes to be able to reactivate nitro once the player lays off the boost
+    public float nitroDelayTime = 0.4f; // In seconds, how much the player will need to wait until they are able to use nitro again
+    public float nitroOverBoostDelayTime = 1.5f; // In seconds, how much the player will need to wait until they are able to use nitro again after overboosting
+    public float nitroHeatRate = 1.5f; // The rate of which the heating of the nitro increases as the nitro is used
+    public float nitroCoolRate = 1; // The rate of which the heating of the nitro decreases as the nitro is disengaged
+    public float airNitroCoolRate = 2; // The rate of which the heating of the nitro decreases as the nitro is disengaged while in mid-air
+    public float maxOverBoostPenalty = 3; // In seconds, this determines the amount of time a car can spend overboosting before it explodes
+    [Monitor] public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
+    [Monitor] private float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
+    [Monitor] public bool isOverBoosting; // Determines if the car is in the overboost zone
+    [Monitor] private bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
+    [Monitor] public bool nitroOn; // Indicates if the nitro is being used or not
 
-    [Monitor] private bool nitroDelayInit;
+    public float kineticBoost = 1500f;
+    public float mechanicalBoost = 3000f;
 
-
-
-    [Monitor] public bool nitroOn;
-    public float nitroHeatRate = 1.5f;
-    public float nitroCoolRate = 1;
-    public float airNitroCoolRate = 2;
-    public float maxOverBoostPenalty = 3;
-    [Monitor] private bool isOverBoosting;
-
-
+    
 
 
     [Header("Output")]
@@ -411,7 +411,7 @@ public class CarObj : MonoBehaviour
             if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
             {
                 Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                if (isCarMidAir())
+                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                 {
                     PIDengaged = false;
                 }
@@ -424,7 +424,7 @@ public class CarObj : MonoBehaviour
             if (Input.GetAxisRaw("Vertical") == -1) // Brakes, operate independently of gearbox
             {
                 BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
-                if (isCarMidAir())
+                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                 {
                     PIDengaged = false;
                 }
@@ -441,7 +441,7 @@ public class CarObj : MonoBehaviour
                 if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Operate as normal if we aren't in reverse mode for automatics
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                    if (isCarMidAir())
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                     }
@@ -454,7 +454,7 @@ public class CarObj : MonoBehaviour
                 if (Input.GetAxisRaw("Vertical") == -1)
                 {
                     BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);   // Otherwise, swap the controls so that gas is brakes
-                    if (isCarMidAir())
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                     }   
@@ -469,7 +469,7 @@ public class CarObj : MonoBehaviour
                 if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
                 {
                     BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
-                    if (isCarMidAir())
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                     }  
@@ -477,7 +477,7 @@ public class CarObj : MonoBehaviour
                 else if (gearBox.gearEngaged == true)
                 {
                     BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
-                    if (isCarMidAir())
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                     }  
@@ -486,7 +486,7 @@ public class CarObj : MonoBehaviour
                 if (Input.GetAxisRaw("Vertical") == -1)
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                    if (isCarMidAir())
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                     }  
@@ -564,7 +564,8 @@ public class CarObj : MonoBehaviour
         float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
         float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
 
-        rb.AddTorque(rb.transform.right * v, ForceMode.Acceleration);
+        if (Input.GetKey(KeyCode.Space))
+            rb.AddTorque(rb.transform.right * v, ForceMode.Acceleration);
 
         if (allowBarrelRoll) // If barrel rolls are allowed, flat spins are replaced with barrel rolls instead
         {
@@ -685,6 +686,7 @@ public class CarObj : MonoBehaviour
     {
         if (nitroOn)
         {     
+            applyNitro();
             nitroDelayInit = true;            
             nitroValue = Mathf.Clamp(nitroValue + Time.deltaTime * nitroHeatRate, 0, 1);
             if (nitroValue == 1 && !isOverBoosting)
@@ -695,6 +697,11 @@ public class CarObj : MonoBehaviour
             }
         }
         
+    }
+
+    public void applyNitro()
+    {
+        rb.AddForce(transform.forward * kineticBoost);
     }
 
     private IEnumerator overBoostCountDown()
@@ -722,7 +729,7 @@ public class CarObj : MonoBehaviour
             
         }
         nitroOverBoostValue = 0;
-        nitroDelay = Mathf.Clamp(nitroDelay - (Time.deltaTime / 2),0, 1);
+        nitroDelay = Mathf.Clamp(nitroDelay - 1 * Time.deltaTime , 0, 1);
         
     }
     #endregion

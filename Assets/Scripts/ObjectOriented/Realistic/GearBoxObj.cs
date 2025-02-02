@@ -27,7 +27,7 @@ public class GearBoxObj : MonoBehaviour
 
     [Header("GearBox Outputs")]
     [Tooltip("The current gear the car is using, 0 = Reverse, 1 = Neutral")]
-    [Monitor] [SerializeField] private int currentGear = 1;
+    [Monitor] public int currentGear = 1;
     [Tooltip("Bool that determines if the gear is currently engaged, if not, this means that the clutch is not active, and the throttle may not be active either")]
     [Monitor] [SerializeField] public bool gearEngaged = true;
     private float oldCarSpeed;

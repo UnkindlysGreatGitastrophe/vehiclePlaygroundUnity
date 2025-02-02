@@ -1,0 +1,135 @@
+using System;
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+public class UIScript : MonoBehaviour
+{
+    [Header("References")]
+    public CarObj car;
+    public EngineObj engine;
+    public Image[] engineRPMPoints;
+
+    [Header("EngineRPMGauge")]
+    public float engineRPMFillAmount;
+    public float engineRPMPerPoint;
+    private Color tempColor;
+    private bool emptyOut = false;
+
+    [Header("GearShiftIndicator")]
+    public TextMeshProUGUI gearText;
+    public string[] shiftIndicatorText;
+    [Header("Speedometer")]
+    public TextMeshProUGUI speedometerText;
+
+    [Header("Boost Indicator")]
+    public Image nitroFillImage;
+    public Sprite[] nitroIcons;
+    public Image nitroIcon;
+    public float maxFillAmount = 0.83f;
+    public Transform boostTipPivot;
+
+    public float flickerTime = 0.7f;
+    public float maxFlickerTime = 0.7f;
+    private bool overboostInit = true;
+
+    // Start is called before the first frame update
+    void Start()
+    {
+        engine = car.GetComponentInChildren<EngineObj>();
+        engineRPMPerPoint = (float) 1 / engineRPMPoints.Length;
+        shiftIndicatorText = new string[car.gearBox.numOfGears+1];
+        shiftIndicatorText[0] = "R";
+        shiftIndicatorText[1] = "N";
+        for (int i = 2; i < shiftIndicatorText.Length; i++)
+        {
+            shiftIndicatorText[i] = (i - 1).ToString();
+        }
+    }
+
+    // Update is called once per frame
+    void Update()
+    {
+        engineRPMFillAmount = (engine.engineAngularVelocity * engine.AV_2_RPM - engine.rpmLimitIdle) / (engine.rpmLimit-engine.overRevPenalty);
+        updateRPMReader();
+        updateGearReader();
+        updateSpeedoMeter();
+        updateBoostGauge();
+    }
+
+    void updateRPMReader()
+    {
+        for (int i = 0; i < engineRPMPoints.Length; i++)
+        {  
+            tempColor = engineRPMPoints[i].color;
+            if (!emptyOut)
+                tempColor.a = Mathf.Clamp(engineRPMFillAmount/(engineRPMPerPoint*(i+1)),0,1);
+            else
+                tempColor.a = 0;
+            engineRPMPoints[i].color = tempColor;
+            if (tempColor.a != 1)
+            {
+                emptyOut = true;
+            }
+        }
+        emptyOut = false;
+    }
+
+    void updateGearReader()
+    {
+        gearText.text = shiftIndicatorText[car.gearBox.currentGear].ToString();
+    }
+
+    void updateSpeedoMeter()
+    {
+        speedometerText.text = Mathf.Abs(Mathf.RoundToInt(car.carSpeed)).ToString("000");
+    }
+
+    void updateBoostGauge()
+    {
+        nitroFillImage.fillAmount = (car.nitroValue - 0) / (1 - 0) * (maxFillAmount - 0) + 0;
+        Color newColor = Color.Lerp(Color.yellow, Color.red, car.nitroValue);
+        nitroFillImage.color = newColor;
+        boostTipPivot.localEulerAngles = new Vector3(0, 0,-nitroFillImage.fillAmount*360f);
+
+        if (!car.isOverBoosting)
+        {
+            overboostInit = true;
+            flickerTime = 0f;
+        }
+        if (car.nitroValue == 0)
+        {
+            nitroIcon.sprite = nitroIcons[0];
+        }
+        else
+        {
+            if (car.nitroValue > 0 && !car.isOverBoosting)
+            {
+                nitroIcon.sprite = nitroIcons[1];
+            }
+            if (car.isOverBoosting && car.nitroOn)
+            {
+                if (overboostInit == true)
+                {
+                    nitroIcon.sprite = nitroIcons[2];
+                    flickerTime = maxFlickerTime;
+                    overboostInit = false;
+                }
+                if (flickerTime < 0 && nitroIcon.sprite == nitroIcons[3])
+                {
+                    nitroIcon.sprite = nitroIcons[2];
+                    flickerTime = maxFlickerTime;
+                }
+                if (flickerTime < 0 && nitroIcon.sprite == nitroIcons[2])
+                {
+                    nitroIcon.sprite = nitroIcons[3];
+                    flickerTime = maxFlickerTime;
+                }
+                flickerTime = flickerTime - Time.deltaTime;
+
+            }
+
+        }
+        
+    }
+}
