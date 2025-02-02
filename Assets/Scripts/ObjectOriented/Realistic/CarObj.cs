@@ -140,7 +140,8 @@ public class CarObj : MonoBehaviour
     [Monitor] public bool nitroOn; // Indicates if the nitro is being used or not
 
     public float kineticBoost = 1500f;
-    public float mechanicalBoost = 3000f;
+    public float kineticBoostMultiplier = 3.5f;
+    public float nitrousPower = 0.5f;
 
     
 
@@ -393,6 +394,7 @@ public class CarObj : MonoBehaviour
                 nitroDelayInit = false;
             }
             isOverBoosting = false;
+            engine.nitroTorque = 0;
             StartCoroutine(NitroReactivation());
 
         }
@@ -701,7 +703,8 @@ public class CarObj : MonoBehaviour
 
     public void applyNitro()
     {
-        rb.AddForce(transform.forward * kineticBoost);
+        rb.AddForce(transform.forward * kineticBoost * (kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)));
+        engine.nitroTorque = engine.initialTorque * nitrousPower;
     }
 
     private IEnumerator overBoostCountDown()

@@ -559,7 +559,8 @@ MonoBehaviour:
   isOverBoosting: 0
   nitroOn: 0
   kineticBoost: 150
-  mechanicalBoost: 3000
+  kineticBoostMultiplier: 3.5
+  nitrousPower: 3000
   Tc: 0
   inductionTorque: 0
   torqueToAxle: 0
@@ -2171,6 +2172,7 @@ MonoBehaviour:
   engineDrag: 0.02
   engineBrake: 10
   overRevPenalty: 500
+  nitroTorque: 0
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -4436,7 +4438,8 @@ MonoBehaviour:
   isOverBoosting: 0
   nitroOn: 0
   kineticBoost: 150
-  mechanicalBoost: 3000
+  kineticBoostMultiplier: 3.5
+  nitrousPower: 3000
   Tc: 0
   inductionTorque: 0
   torqueToAxle: 0
@@ -6767,6 +6770,7 @@ MonoBehaviour:
   engineDrag: 0.02
   engineBrake: 10
   overRevPenalty: 500
+  nitroTorque: 0
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -8139,6 +8143,7 @@ MonoBehaviour:
   engineDrag: 0.02
   engineBrake: 10
   overRevPenalty: 500
+  nitroTorque: 0
   engineAngularVelocity: 0
   initialTorque: 0
   dragTorque: 0
@@ -8626,8 +8631,9 @@ MonoBehaviour:
   nitroValue: 0
   isOverBoosting: 0
   nitroOn: 0
-  kineticBoost: 15000
-  mechanicalBoost: 3000
+  kineticBoost: 1500
+  kineticBoostMultiplier: 10
+  nitrousPower: 0.1
   Tc: 0
   inductionTorque: 0
   torqueToAxle: 0

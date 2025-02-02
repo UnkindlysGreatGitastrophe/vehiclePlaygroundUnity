@@ -20,6 +20,7 @@ public class EngineObj : MonoBehaviour
     public float engineBrake = 10f;
     [Tooltip("How far back the engine gets sent back once the redline is hit")]
     public float overRevPenalty = 500;
+    public float nitroTorque = 0;
 
     [Header("Engine Outputs")]
     [Tooltip("The engine's angular velocity at a given time, unit is in RAD/S")]
@@ -35,6 +36,7 @@ public class EngineObj : MonoBehaviour
     [Monitor] public float torque_out; // Output torque of the engine itself
     [Tooltip("Clutch torque, used to try and balance the engine RPM with the transmission")]
     public float clutch_torque;
+    [Monitor] private float horsepower;
 
 
     
@@ -66,12 +68,14 @@ public class EngineObj : MonoBehaviour
             clutch_torque = car.Tc;
             torque_out = initialTorque // Total Torque Output is the initial torque of engine - the drag torque - the clutch torque trying to balance the rpms with the drivetrain.
             - dragTorque * Mathf.Sign(engineAngularVelocity)
-            - clutch_torque;
-            
+            - clutch_torque
+            + nitroTorque
+            ;
             float engineAccel = torque_out / engineMoment; // Update Engine Angular Velocity based on the calculated torque.
             engineAngularVelocity += engineAccel * Time.fixedDeltaTime; // Is this integration
             engineAngularVelocity = Mathf.Clamp(engineAngularVelocity, rpmLimitIdle*RPM_2_AV, rpmLimit * RPM_2_AV); // Clamp the engine angular velocity with the max and minimum RPM.
             engineRPM = engineAngularVelocity * AV_2_RPM; // Engine RPM gets updated accordingly
+            horsepower = Mathf.Abs((torque_out * engineRPM)/5252);
         }
     #endregion
 }
