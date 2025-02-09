@@ -21,6 +21,10 @@ public class CarObj : MonoBehaviour
     public WheelObj[] poweredWheels;
     private Rigidbody rb;
 
+    private Transform LookPoint;
+    private Transform MovePoint;
+
+
     [Header("Brake Input Parameters")]
 
     [Tooltip("Maximum amount of braking possible for a car, This is the same force that will be applied on e-brake compatible wheels")]
@@ -48,6 +52,8 @@ public class CarObj : MonoBehaviour
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
     [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
     [Monitor] public bool PIDengaged; // Bool that allows the car to stablize itself in the air
+
+    [Monitor] public float PIDstrength = 1;
     [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
     public float steeringInput; // -1 to 1, left is -1, 0 is straight, 1 is right
     [Tooltip("The maximum steering angle a car can do in a given situation, inversely affected by top speed for smooth driving at speeds")]
@@ -105,6 +111,9 @@ public class CarObj : MonoBehaviour
     public Vector3 totalRotation = Vector3.zero; // Total rotation performed in the car relative to a lastRotation
     [Tooltip("The pivot point of which total rotation is calclated off of")]
     public Quaternion lastRotation; // The pivot point of which total rotation is calclated off of
+
+    public Vector3 lastRotationPID; // The pivot point of which total rotation is calclated off of
+
     [Tooltip("The Euler representation of the difference between the current and last rotation")]
     private Vector3 angleDiffs; // The difference between the current and lastRotation
     [Tooltip("When true, the last rotation prior to taking a jump will be stored for tracking stunts")]
@@ -161,6 +170,10 @@ public class CarObj : MonoBehaviour
     [Tooltip("Average Slip Ratio of rear wheels")]
     public float avgBackSlipRatio; // Average Back Slip Ratio
 
+    [Monitor] public Vector3 Gforces = Vector3.zero;
+    private Vector3 lastVelocity = Vector3.zero;
+    private Vector3 currentVelocity = Vector3.zero;
+
 
 
 
@@ -175,6 +188,9 @@ public class CarObj : MonoBehaviour
         // REFERENCING
         rb = GetComponent<Rigidbody>(); // Get the RigidBody Component of car
         differential = transform.GetComponentsInChildren<DifferentialObj>(); // Get Differential
+        LookPoint = transform.Find("LookPoint").GetComponent<Transform>();
+        MovePoint = transform.Find("MovePoint").GetComponent<Transform>();
+
 
         // VARIABLE INITIALIZING
         frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1); // Make sure it is within the correct boundaries
@@ -297,6 +313,7 @@ public class CarObj : MonoBehaviour
             {
                 originInit = true;
                 lastRotation = rb.rotation;
+                lastRotationPID = Vector3.ProjectOnPlane(rb.transform.forward, Vector3.up); // This is where initialization happens for rotations
             }
             if (PIDengaged)
             {
@@ -310,13 +327,32 @@ public class CarObj : MonoBehaviour
         {
             originInit = false;
             PIDengaged = true;
+            PIDstrength = 1;
         }
-        carSpeed = transform.InverseTransformDirection(rb.velocity).z * 3.6f; // Measured in KM/H
+        lastVelocity = currentVelocity;
+        currentVelocity = transform.InverseTransformDirection(rb.velocity);
+        carSpeed = currentVelocity.z * 3.6f; // Measured in KM/H
+        getGForces();
+        updateLookPoint();
+        
         
 
 
     }
 
+    void getGForces()
+    {   
+        Vector3 currentSpeed = transform.InverseTransformDirection(rb.velocity);
+        Gforces.x = ((currentSpeed.x - lastVelocity.x) / Time.fixedDeltaTime) / Physics.gravity.y;
+        Gforces.y = ((currentSpeed.y - lastVelocity.y) / Time.fixedDeltaTime) / Physics.gravity.y;
+        Gforces.z = ((currentSpeed.z - lastVelocity.z) / Time.fixedDeltaTime) / Physics.gravity.y;
+
+    }
+
+    void updateLookPoint()
+    {
+        LookPoint.transform.position = rb.position + rb.velocity;
+    }
     #endregion
 
     #region Input Handling
@@ -335,10 +371,6 @@ public class CarObj : MonoBehaviour
         if (Input.GetKey(KeyCode.C))
         {
             Time.timeScale = 0.1f;
-        }
-        if (Input.GetKey(KeyCode.V))
-        {
-            Time.timeScale = 0.01f;
         }
 
         if (Input.GetKeyDown(KeyCode.T))
@@ -376,6 +408,7 @@ public class CarObj : MonoBehaviour
         {
             eBrakeInput = 0;
             allowBarrelRoll = false;
+
         }
 
         if (Input.GetKey(KeyCode.LeftShift) && nitroDelay == 0)
@@ -416,6 +449,7 @@ public class CarObj : MonoBehaviour
                 if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                 {
                     PIDengaged = false;
+                    PIDstrength = 0;
                 }
             }
             else if (gearBox.gearEngaged == true)
@@ -429,6 +463,8 @@ public class CarObj : MonoBehaviour
                 if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                 {
                     PIDengaged = false;
+                    PIDstrength = 0;
+
                 }
             }
             else
@@ -446,6 +482,8 @@ public class CarObj : MonoBehaviour
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
+                        PIDstrength = 0;
+
                     }
                 }
                 else if (gearBox.gearEngaged == true)
@@ -459,6 +497,8 @@ public class CarObj : MonoBehaviour
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
+                        PIDstrength = 0;
+
                     }   
                 }
                 else
@@ -474,6 +514,8 @@ public class CarObj : MonoBehaviour
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
+                        PIDstrength = 0;
+
                     }  
                 }
                 else if (gearBox.gearEngaged == true)
@@ -482,6 +524,7 @@ public class CarObj : MonoBehaviour
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
+                        PIDstrength = 0;
                     }  
                 }
 
@@ -491,6 +534,8 @@ public class CarObj : MonoBehaviour
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
+                        PIDstrength = 0;
+
                     }  
                 }
                 else
@@ -540,7 +585,7 @@ public class CarObj : MonoBehaviour
 
     #region Aerial Dynamics
 
-    bool isCarMidAir()
+    public bool isCarMidAir()
     // Check to see if all 4 tires are off the ground
     {
         for (int w = 0; w < wheels.Length; w++)
@@ -565,17 +610,20 @@ public class CarObj : MonoBehaviour
         // Allow the car to Rotate
         float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
         float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
-
-        if (Input.GetKey(KeyCode.Space))
-            rb.AddTorque(rb.transform.right * v, ForceMode.Acceleration);
-
-        if (allowBarrelRoll) // If barrel rolls are allowed, flat spins are replaced with barrel rolls instead
+        if (PIDengaged == false)
         {
-            rb.AddRelativeTorque(0f, 0f, h, ForceMode.Acceleration);
+            if (Input.GetKey(KeyCode.Space))
+            rb.AddTorque(rb.transform.right * v, ForceMode.VelocityChange);
+
+            if (allowBarrelRoll) // If barrel rolls are allowed, flat spins are replaced with barrel rolls instead
+            {
+                rb.AddRelativeTorque(0f, 0f, h, ForceMode.VelocityChange);
+            }
         }
+        
         else
         {
-            rb.AddTorque(rb.transform.up * h, ForceMode.Acceleration);
+            rb.AddTorque(rb.transform.up * h, ForceMode.VelocityChange);
         }
         //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
     }
@@ -648,15 +696,15 @@ public class CarObj : MonoBehaviour
         if (isHit) // If there is a ground underneath the car...
         {
 
-            //Debug.DrawRay(RaycastDir.point, RaycastDir.normal, Color.magenta);
-            //Debug.DrawRay(rb.position, rb.transform.up, Color.magenta);
+            Debug.DrawRay(RaycastDir.point, RaycastDir.normal, Color.magenta);
+            Debug.DrawRay(rb.position, rb.transform.up, Color.magenta);
 
 
             
 
-            Vector3 targetValue = RaycastDir.normal; // Get the normal vector of the ground, this will be our target value we want the car's rotation to match.
+            Vector3 targetValueUP = RaycastDir.normal; // Get the normal vector of the ground, this will be our target value we want the car's rotation to match.
             //Vector3 error = targetValue - rb.transform.up;
-            Vector3 error = Vector3.Cross(rb.transform.up, targetValue); // The discrepency between the target and current rotation of the car.
+            Vector3 error = Vector3.Cross(rb.transform.up, targetValueUP); // The discrepency between the target and current rotation of the car.
             // Calculate P
             Vector3 P = proportionalGain * error; // The P value that will help lessen the error (Rotate to align the car to normal)
             // Calculate D term
@@ -672,7 +720,7 @@ public class CarObj : MonoBehaviour
             Vector3 I =  integrationStored * integralGain;
 
 
-            rb.AddTorque(P+D+I, ForceMode.Impulse); // Combine and add all forces as torques
+            rb.AddTorque(PIDstrength * P+D+I, ForceMode.Impulse); // Combine and add all forces as torques
         }
 
 
