@@ -27,11 +27,15 @@ public class GearBoxObj : MonoBehaviour
 
     [Header("GearBox Outputs")]
     [Tooltip("The current gear the car is using, 0 = Reverse, 1 = Neutral")]
-    [Monitor] public int currentGear = 1;
+    public int currentGear = 1;
     [Tooltip("Bool that determines if the gear is currently engaged, if not, this means that the clutch is not active, and the throttle may not be active either")]
-    [Monitor] [SerializeField] public bool gearEngaged = true;
+    [SerializeField] public bool gearEngaged = true;
     private float oldCarSpeed;
 
+    void Awake()
+    {
+            numOfGears = gearRatios.Length; // Dynamically assign numOfGears based on gearRatios array
+    }
     void Start(){
 
         // DEBUGGING
@@ -65,10 +69,10 @@ public class GearBoxObj : MonoBehaviour
     private void AutoGearBoxManager() // Function responsible for managing the automatic gearbox
     {
         // If the gear is actively engaged, then only then can we allow shifting
-        if (gearEngaged)
+        if (gearEngaged && !car.isCarMidAir())
         {
             // If the car speed slow enough and is flipped, and the user is pressing the brake button, and the car is not in reverse mode, enable reversing mode.
-            if (Mathf.Abs(car.carSpeed) < 1 && Mathf.Sign(oldCarSpeed) != Mathf.Sign(car.carSpeed) && Input.GetAxisRaw("Vertical") == -1 && car.AutoReverseMode == false)
+            if (Mathf.Abs(car.carSpeed) < 1 && Mathf.Sign(oldCarSpeed) != Mathf.Sign(car.carSpeed) && Input.GetAxisRaw("Vertical") == -1 && car.AutoReverseMode == false && Mathf.Abs(car.carSpeed) < 1)
             {
                 car.AutoReverseMode = true; // This will invert the controls of the brake and gas
                 GearREVERSE(); // Switch the gear to reverse
@@ -81,7 +85,7 @@ public class GearBoxObj : MonoBehaviour
                 GearToFirst(); // Switch to first gear
                 // Debug.Log("Gear To First");
             }
-            else if (car.carSpeed >= 0.98f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+            else if (car.carSpeed >= 0.95f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
             {
                 GearUP();
                 //Debug.Log("Gear Up");

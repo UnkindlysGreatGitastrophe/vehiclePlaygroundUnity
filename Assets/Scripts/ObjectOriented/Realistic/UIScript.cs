@@ -1,7 +1,10 @@
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using static CarObj;
 
 public class UIScript : MonoBehaviour
 {
@@ -32,6 +35,13 @@ public class UIScript : MonoBehaviour
     public float flickerTime = 0.7f;
     public float maxFlickerTime = 0.7f;
     private bool overboostInit = true;
+
+    [Header("Stunt UI")]
+    public TextMeshProUGUI stuntDisplayText;
+    public TextMeshProUGUI nitroGainDisplayText;
+    public TextMeshProUGUI nitroPowerMultiplierText;
+    public Animator stuntUIAnimation;
+
 
     // Start is called before the first frame update
     void Start()
@@ -130,6 +140,62 @@ public class UIScript : MonoBehaviour
             }
 
         }
+        
+    }
+
+    public void showcaseStuntText(Dictionary<StuntType, int> recordedStunts, float boostMultiplier)
+    {
+        int count = recordedStunts.Count-1;
+        int idx = 0;
+        string suffix;
+        string stuntText = "";
+        foreach(KeyValuePair<StuntType, int> entry in recordedStunts)
+            {
+                if (idx == count)
+                {
+                    suffix = "!!!";
+                }
+                else
+                {   
+                    suffix = "+ ";
+                }
+                if (entry.Key == StuntType.SPIN360)
+                {
+                    stuntText = stuntText + (360 * entry.Value).ToString() + " " + suffix;
+                }
+                else if (entry.Key == StuntType.FRONTFLIP)
+                {
+                    stuntText = stuntText + entry.Value.ToString() + "X Frontflip " + suffix; 
+                }
+                else if (entry.Key == StuntType.BACKFLIP)
+                {
+                    stuntText = stuntText + entry.Value.ToString() + "X Backflip " + suffix; 
+                }
+                else if (entry.Key == StuntType.BARRELROLL)
+                {
+                    stuntText = stuntText + entry.Value.ToString() + "X Barrel Roll " + suffix; 
+                }
+                idx++;
+                // do something with entry.Value or entry.Key
+            }
+        stuntDisplayText.text = stuntText;
+        nitroGainDisplayText.text = "+" + boostMultiplier.ToString()+ "X " + "Nitro Power Bonus";
+        nitroPowerMultiplierText.text = car.boostStuntMultiplier.ToString("#.00") + "x";
+        stuntDisplayText.enabled = true;
+        nitroGainDisplayText.enabled = true;
+        stuntUIAnimation.enabled = true;
+        StartCoroutine(RemoveNitroUI());
+
+    }
+
+    private IEnumerator RemoveNitroUI()
+    {
+       
+        yield return new WaitForSeconds(3);
+        stuntDisplayText.enabled = false;
+        nitroGainDisplayText.enabled = false;
+        stuntUIAnimation.enabled = false;
+
         
     }
 }

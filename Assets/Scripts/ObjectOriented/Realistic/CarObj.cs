@@ -4,12 +4,28 @@ using UnityEngine;
 using Unity.VisualScripting;
 using System.Text.RegularExpressions;
 using System.Collections;
+using System.Collections.Generic;
+using System.Runtime.InteropServices.WindowsRuntime;
 
 
 public class CarObj : MonoBehaviour
 {
-    public enum SteeringLock {OFF, RIGHT, LEFT}
+    public enum SteeringLock {OFF, RIGHT, LEFT};
     public enum DriveType {FWD, RWD, AWD};
+    public enum StuntType {FRONTFLIP, BACKFLIP, TABLETOP, BARRELROLL, SPIN360};
+    readonly Dictionary<StuntType, float> stuntScore = new Dictionary<StuntType, float>
+    {
+        {StuntType.FRONTFLIP, 0.1f },
+        {StuntType.BACKFLIP, 0.1f },
+        {StuntType.BARRELROLL, 0.08f },
+        {StuntType.TABLETOP, 0.15f },
+        {StuntType.SPIN360, 0.13f}
+    };
+
+    public float[] repeatStuntPenalty = {1f, 0.85f, 0.6f};
+    
+
+    
 
     [Header("References")]
     public EngineObj engine;
@@ -19,6 +35,7 @@ public class CarObj : MonoBehaviour
     public DifferentialObj[] differential;
     public WheelObj[] wheels;
     public WheelObj[] poweredWheels;
+    public UIScript ui;
     private Rigidbody rb;
 
     private Transform LookPoint;
@@ -42,18 +59,18 @@ public class CarObj : MonoBehaviour
     [Header("Input")]
 
     [Tooltip("The gas pedal!, 0 = no throttle, 1 = full throttle")]
-    [Monitor] public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
+    public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
 
     [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
-    [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
+    public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
     [Tooltip("The Spicy brake pedal, 0 = no handbrake, 1 = full handbrake")]
     public float eBrakeInput; // 0-1, 0 is no handbrake, 1 is full hand brake
     [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
     [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
-    [Monitor] public bool PIDengaged; // Bool that allows the car to stablize itself in the air
+    public bool PIDengaged; // Bool that allows the car to stablize itself in the air
 
-    [Monitor] public float PIDstrength = 1;
+    public float PIDstrength = 1;
     [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
     public float steeringInput; // -1 to 1, left is -1, 0 is straight, 1 is right
     [Tooltip("The maximum steering angle a car can do in a given situation, inversely affected by top speed for smooth driving at speeds")]
@@ -107,10 +124,13 @@ public class CarObj : MonoBehaviour
     [Tooltip("Stunts!")]
     public int numRight360s = 0;
     [Tooltip("Total amount of rotation made in a particular axis relative to an original rotation")]
+    public float lastStuntScore = 0;
 
     public Vector3 totalRotation = Vector3.zero; // Total rotation performed in the car relative to a lastRotation
     [Tooltip("The pivot point of which total rotation is calclated off of")]
     public Quaternion lastRotation; // The pivot point of which total rotation is calclated off of
+    public List<StuntType> stuntsInStreak;
+    public List<List<StuntType>> allRecordedStunts = new List<List<StuntType>>();
 
     public Vector3 lastRotationPID; // The pivot point of which total rotation is calclated off of
 
@@ -118,6 +138,8 @@ public class CarObj : MonoBehaviour
     private Vector3 angleDiffs; // The difference between the current and lastRotation
     [Tooltip("When true, the last rotation prior to taking a jump will be stored for tracking stunts")]
     bool originInit = false; // Bool that initializes the lastRotation the moment we catch air
+
+
 
     [Header("PID")]
     [Tooltip("How quick the car rotation approaches the target rotation")]
@@ -135,18 +157,19 @@ public class CarObj : MonoBehaviour
     [Header("Nitro Properties")]
 
     [Tooltip("The time it takes to be able to reactivate nitro once the player lays off the boost")]
-    [Monitor] public float nitroDelay = 0f; // The time it takes to be able to reactivate nitro once the player lays off the boost
+    public float nitroDelay = 0f; // The time it takes to be able to reactivate nitro once the player lays off the boost
     public float nitroDelayTime = 0.4f; // In seconds, how much the player will need to wait until they are able to use nitro again
     public float nitroOverBoostDelayTime = 1.5f; // In seconds, how much the player will need to wait until they are able to use nitro again after overboosting
     public float nitroHeatRate = 1.5f; // The rate of which the heating of the nitro increases as the nitro is used
     public float nitroCoolRate = 1; // The rate of which the heating of the nitro decreases as the nitro is disengaged
     public float airNitroCoolRate = 2; // The rate of which the heating of the nitro decreases as the nitro is disengaged while in mid-air
     public float maxOverBoostPenalty = 3; // In seconds, this determines the amount of time a car can spend overboosting before it explodes
-    [Monitor] public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
-    [Monitor] private float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
-    [Monitor] public bool isOverBoosting; // Determines if the car is in the overboost zone
-    [Monitor] private bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
-    [Monitor] public bool nitroOn; // Indicates if the nitro is being used or not
+    public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
+    private float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
+    public bool isOverBoosting; // Determines if the car is in the overboost zone
+    private bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
+    public bool nitroOn; // Indicates if the nitro is being used or not
+    public float boostStuntMultiplier = 1;
 
     public float kineticBoost = 1500f;
     public float kineticBoostMultiplier = 3.5f;
@@ -170,7 +193,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("Average Slip Ratio of rear wheels")]
     public float avgBackSlipRatio; // Average Back Slip Ratio
 
-    [Monitor] public Vector3 Gforces = Vector3.zero;
+    public Vector3 Gforces = Vector3.zero;
     private Vector3 lastVelocity = Vector3.zero;
     private Vector3 currentVelocity = Vector3.zero;
 
@@ -255,7 +278,7 @@ public class CarObj : MonoBehaviour
 
     #region Update
     
-    /*void OnDrawGizmos() // Used to debug center of gravity
+    void OnDrawGizmos() // Used to debug center of gravity
     {
         if (rb != null)
         {
@@ -263,7 +286,7 @@ public class CarObj : MonoBehaviour
         Gizmos.DrawSphere(transform.position + transform.rotation * rb.centerOfMass,1f);
         }
     }
-    */
+    
 
     void FixedUpdate()
     {
@@ -321,13 +344,22 @@ public class CarObj : MonoBehaviour
             }
             AerialRotation();
             TrackStunts();
+            if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
+                PIDengaged = true;
+            }
             
         }
         else
-        {
+        {   
+            float tempScore = calculateStuntScore();
+            if (tempScore != 0)
+                lastStuntScore = tempScore;
+            boostStuntMultiplier += tempScore;
             originInit = false;
             PIDengaged = true;
             PIDstrength = 1;
+            totalRotation = Vector3.zero;
+
         }
         lastVelocity = currentVelocity;
         currentVelocity = transform.InverseTransformDirection(rb.velocity);
@@ -548,11 +580,6 @@ public class CarObj : MonoBehaviour
         }
         }
 
-        
-        
-    
-
-        
             
     }
 
@@ -610,7 +637,7 @@ public class CarObj : MonoBehaviour
         // Allow the car to Rotate
         float h = Input.GetAxis("Horizontal") * airRotationAmount * Time.deltaTime;
         float v = Input.GetAxis("Vertical") * airRotationAmount * Time.deltaTime;
-        if (PIDengaged == false)
+        if (Input.GetKey(KeyCode.Space))
         {
             if (Input.GetKey(KeyCode.Space))
             rb.AddTorque(rb.transform.right * v, ForceMode.VelocityChange);
@@ -643,42 +670,94 @@ public class CarObj : MonoBehaviour
 
         // Increase stunt count for when a full revolution is complete.
 
-        if (totalRotation.x < -360f) 
+        if (totalRotation.x < -270f) 
         {
             totalRotation.x = 0;
             numFrontFlips++;
+            stuntsInStreak.Add(StuntType.FRONTFLIP);
         }
-        else if (totalRotation.x > 360f)
+        else if (totalRotation.x > 270f)
         {
             totalRotation.x = 0;
             numBackFlips++;
+            stuntsInStreak.Add(StuntType.BACKFLIP);
+
         }
 
         totalRotation.y += angleDiffs.y;
 
-        if (totalRotation.y < -360f)
+        if (totalRotation.y < -270f)
         {
             totalRotation.y = 0;
             numRight360s++;
+            stuntsInStreak.Add(StuntType.SPIN360);
+
         }
-        else if (totalRotation.y > 360f)
+        else if (totalRotation.y > 270f)
         {
             totalRotation.y = 0;
             numLeft360s++;
+            stuntsInStreak.Add(StuntType.SPIN360);
+
         }
 
         totalRotation.z += angleDiffs.z;
 
-        if (totalRotation.z < -360f)
+        if (totalRotation.z < -270f)
         {
             totalRotation.z = 0;
             numRightBarrelRolls++;
+            stuntsInStreak.Add(StuntType.BARRELROLL);
+
         }
-        else if (totalRotation.z > 360f)
+        else if (totalRotation.z > 270f)
         {
             totalRotation.z = 0;
             numLeftBarrelRolls++;
+            stuntsInStreak.Add(StuntType.BARRELROLL);
+
         }
+    }
+
+    float calculateStuntScore()
+    {
+        if (stuntsInStreak.Count == 0)
+        {
+            return 0f;
+        }
+
+        float totalScore = 0f;
+        Dictionary<StuntType, int> recordedStunts = new Dictionary<StuntType,int>();
+        for (int i = 0; i < stuntsInStreak.Count; i++)
+        {
+            if (!recordedStunts.ContainsKey(stuntsInStreak[i]))
+            {
+                recordedStunts.Add(stuntsInStreak[i],1);
+            }
+            else
+            {
+                recordedStunts[stuntsInStreak[i]] += 1;
+            }
+        }
+
+        foreach(KeyValuePair<StuntType, int> entry in recordedStunts)
+            {
+                float baseStuntScore = 0;
+                for (int i = 0; i < entry.Value; i++)
+                {
+                    baseStuntScore += stuntScore[entry.Key] * repeatStuntPenalty[Mathf.Min(i,2)];
+                }
+                totalScore += baseStuntScore;
+                // do something with entry.Value or entry.Key
+            }
+        if (ui != null)
+        {
+            StartCoroutine(processStunt(recordedStunts, totalScore));
+            //ui.showcaseStuntText(recordedStunts, totalScore);
+        }
+        allRecordedStunts.Add(stuntsInStreak);
+        stuntsInStreak.Clear();
+        return totalScore;
     }
 
     void PID() // Function for being able to stabilize the car when in mid air, and front the car from rolling after a jump. Also can flip an upside down car if near stationary
@@ -728,6 +807,31 @@ public class CarObj : MonoBehaviour
 
     }
 
+    private IEnumerator processStunt(Dictionary<StuntType, int> recordedStunts, float totalScore)
+    {
+        float time = 0f;
+        while (true)
+        {
+            yield return .1;
+            if (!isCarMidAir())
+            {
+                time += Time.deltaTime;
+                if (time >= 1)
+                {
+                    ui.showcaseStuntText(recordedStunts, totalScore);
+                    yield break;
+                }
+                    
+            }
+            else
+            {
+                time = 0;
+            }
+        }
+        
+        
+    }
+
     #endregion
 
     #region Nitro
@@ -751,8 +855,8 @@ public class CarObj : MonoBehaviour
 
     public void applyNitro()
     {
-        rb.AddForce(transform.forward * kineticBoost * (kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)));
-        engine.nitroTorque = engine.initialTorque * nitrousPower;
+        rb.AddForce(transform.forward * kineticBoost * (kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)) * (Mathf.Max(1,boostStuntMultiplier/2)));
+        engine.nitroTorque = engine.initialTorque * nitrousPower * boostStuntMultiplier;
     }
 
     private IEnumerator overBoostCountDown()

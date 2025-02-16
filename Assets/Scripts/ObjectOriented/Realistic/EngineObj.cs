@@ -29,13 +29,13 @@ public class EngineObj : MonoBehaviour
     [Monitor] private float engineRPM = 0.0f;
     [Header("Engine Torques")]
     [Tooltip("The torque produced by the engine without any drag penalties")]
-    public float initialTorque;
+    [Monitor] public float initialTorque;
     [Tooltip("The resistance torque produced by engine drag and the engine brake")]
-    public float dragTorque; // Resistance torque opposing the initial torque the car engine generates
+    [Monitor] public float dragTorque; // Resistance torque opposing the initial torque the car engine generates
     [Tooltip("The output torque, adds together both the initial torque and the resistance torques")]
     [Monitor] public float torque_out; // Output torque of the engine itself
     [Tooltip("Clutch torque, used to try and balance the engine RPM with the transmission")]
-    public float clutch_torque;
+    [Monitor] public float clutch_torque;
     [Monitor] private float horsepower;
 
 

@@ -20,8 +20,8 @@ public class ForcedInductionObj : MonoBehaviour
     // Start is called before the first frame update
 
     [Header("TurboCharger Output")]
-    [Monitor] public float pressure;
-    [Monitor] public float turboTorque;
+    public float pressure;
+    public float turboTorque;
 
     void Start()
     {

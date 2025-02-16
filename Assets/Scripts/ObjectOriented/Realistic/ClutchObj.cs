@@ -96,6 +96,7 @@ public class ClutchObj : MonoBehaviour
            -clutchMaxTorq * clutchLock,
            clutchMaxTorq * clutchLock);
     }
+    
 
     public static float Remap (float input, float rangeMin, float rangeEnd, float newRangeMin,  float newRangeEnd)
     {
