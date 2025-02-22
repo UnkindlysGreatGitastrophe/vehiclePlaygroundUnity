@@ -60,12 +60,18 @@ public class EngineObj : MonoBehaviour
         {
             initialTorque = engineCurve.Evaluate(engineRPM) * car.Throttle; // The torque the engine makes, based on RPM and throttle
             dragTorque = engineBrake + (Mathf.Abs(engineAngularVelocity)*AV_2_RPM*engineDrag); // The friction torque that counters initial torque, gets higher with RPMs
-            if (engineAngularVelocity * AV_2_RPM >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
+            if (Mathf.Round(engineAngularVelocity * AV_2_RPM) >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
             {
                 engineAngularVelocity -= overRevPenalty * RPM_2_AV;
                 initialTorque = 0;
             }
-            clutch_torque = car.Tc;
+                if(car.gearBox.get_ratio() != 0.0f && car.gearBox.gearEngaged) // If not in Neutral or shifting
+                clutch_torque = car.clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
+            else
+            {
+                clutch_torque = 0; // Clutch is not connected
+                car.clutch.clutchLock = 0;
+            }
             torque_out = initialTorque // Total Torque Output is the initial torque of engine - the drag torque - the clutch torque trying to balance the rpms with the drivetrain.
             - dragTorque * Mathf.Sign(engineAngularVelocity)
             - clutch_torque
@@ -75,7 +81,8 @@ public class EngineObj : MonoBehaviour
             engineAngularVelocity += engineAccel * Time.fixedDeltaTime; // Is this integration
             engineAngularVelocity = Mathf.Clamp(engineAngularVelocity, rpmLimitIdle*RPM_2_AV, rpmLimit * RPM_2_AV); // Clamp the engine angular velocity with the max and minimum RPM.
             engineRPM = engineAngularVelocity * AV_2_RPM; // Engine RPM gets updated accordingly
-            horsepower = Mathf.Abs((torque_out * engineRPM)/5252);
+            horsepower = Mathf.Abs(((initialTorque // Total Torque Output is the initial torque of engine - the drag torque - the clutch torque trying to balance the rpms with the drivetrain.
+            - dragTorque * Mathf.Sign(engineAngularVelocity)) * engineRPM)/(7127));
         }
     #endregion
 }

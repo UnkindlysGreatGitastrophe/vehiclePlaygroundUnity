@@ -184,7 +184,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("Torque produced from a forced induction system")] 
     public float inductionTorque;
     [Tooltip("Torque produced from the Gearbox ratio and final drive gear that gets sent to each axle")]
-    public float torqueToAxle = 0; // Torque produced from the Gearbox after supplying it with the Torque CLutch
+    [Monitor] public float torqueToAxle; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
     [Tooltip("Measured in KM/H")]
     [Monitor] public float carSpeed = 0; // Measured in KM/H
@@ -329,6 +329,11 @@ public class CarObj : MonoBehaviour
             wheels[i].calculateLateralForce(); // Function for calculating lateral force based on Slip Angle
             wheels[i].applyWheelForces(); // Function for applying a combination of Lateral and longitudinal force
         }
+        float dragCoefficient = 0.353f; // might be a bit too much
+        Vector3 dragForce = transform.TransformDirection(dragCoefficient * -currentVelocity * currentVelocity.magnitude);
+        rb.AddForceAtPosition( 
+            dragForce 
+            , transform.position);
 
         if (isCarMidAir()) // If the car is in the air, All 4 raycasts are not touching the ground, we allow the mid-air manuevers
         {

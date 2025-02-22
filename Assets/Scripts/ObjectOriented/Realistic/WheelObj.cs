@@ -21,7 +21,7 @@ public class WheelObj : MonoBehaviour
     [SerializeField] private float springForce; [SerializeField] private float damperForce; 
 
     [Header("Suspension Vectors")]
-    [SerializeField] private Vector3 forcePerTire; 
+    [SerializeField] internal Vector3 forcePerTire; 
     
     [Header("Wheel Parameters")]
 
@@ -49,7 +49,7 @@ public class WheelObj : MonoBehaviour
 
     [Header("Longitudinal Variables")]
     public float longitudinalForce; // Newtons -> kg*m/s^2
-    public float slipRatio;
+    [Monitor] public float slipRatio;
     public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2
     Vector3 rollResistance; // Newtons -> kg*m/s^2
@@ -60,7 +60,7 @@ public class WheelObj : MonoBehaviour
     public float steeringAngle; 
 
     public float lateralForce;
-    public float slipAngle;
+    [Monitor] public float slipAngle;
     public float tireGripFactor; 
     // These need to be global
     float differentialSlipRatio = 0.0f;
@@ -76,7 +76,7 @@ public class WheelObj : MonoBehaviour
     float x_shape = 1.35f;
     public float z_shape = 1.3f;
     float stiff = 10;
-    float curve = 0;
+    float curve = 0.995f;
 
     [Header("Brakes Variables")]
     public bool hasEBrake;
@@ -137,7 +137,7 @@ public class WheelObj : MonoBehaviour
         springForce = contactDepth * springRate;
         damperForce = contactSpeed * damperRate;
         Fz = (springForce + damperForce) * 100;
-        forcePerTire =  Vector3.Normalize(RaycastDir.normal) * Fz; //Why 100?
+        forcePerTire = Vector3.Normalize(RaycastDir.normal) * Fz; //Why 100?
 
         // Generally, given a mass M, if a car has 4 springs, then each spring must be able to the produce a force of M/4 * 9.81 to be able to hold a suspension well.
         // Dampening usually is 1/10th the Stiffness Rate.
@@ -148,8 +148,8 @@ public class WheelObj : MonoBehaviour
         //We must modifiy the Lateral and longitudinal forces so that it does not exceed FZ * coefficient of friction for the tire, 
         if (slipRatio != 0 && slipAngle != 0)
         {
-            longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
-            lateralForce = lateralForce * (Mathf.Abs(slipAngle)/Mathf.Sqrt(Mathf.Pow(slipRatio,2) + Mathf.Pow(slipAngle,2)));
+            longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio/100)/Mathf.Sqrt(Mathf.Pow(slipRatio/100,2) + Mathf.Pow(slipAngle*Mathf.Deg2Rad,2)));
+            lateralForce = lateralForce * (Mathf.Abs(slipAngle*Mathf.Deg2Rad)/Mathf.Sqrt(Mathf.Pow(slipRatio/100,2) + Mathf.Pow(slipAngle*Mathf.Deg2Rad,2)));
         }
         else
         {
@@ -157,13 +157,14 @@ public class WheelObj : MonoBehaviour
             lateralForce = 0;
         }
         
+        
         if(isHit)
         {
             carRigidBody.AddForceAtPosition(-transform.up*(car.downForce/4),transform.position);
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
             carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) 
-            + dragForce 
-            + rollResistance
+            //+ dragForce 
+            //+ rollResistance
             , transform.position);
         }
     }
@@ -193,19 +194,17 @@ public class WheelObj : MonoBehaviour
     {
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
         Speed = localVelocity.magnitude * 3.6f;
-        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
+        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z) * 100f;
         driveForce = PacejkaApprox(slipRatio, z_shape) 
         * tireGripFactor;
         if (car.hasTC)
         {
             applyTracControl();
         }
-        float dragCoefficient = 0.26f; // might be a bit too much
-        dragForce = transform.TransformDirection(dragCoefficient * -localVelocity * localVelocity.magnitude);
-        float resistanceCoefficient = 10f;
-        rollResistance = transform.TransformDirection(resistanceCoefficient * -localVelocity);
+        float resistanceCoefficient = 0.007f;
+        float rollResistanceForce = resistanceCoefficient * (forcePerTire.y);
         longitudinalForce = driveForce
-        //+ rollResistance
+        - rollResistanceForce
         //divide your limiter rpm by gear ratio, convert it to angular velocity and if you divide it by tyre radius you get what you want == Max speed for a gear
         /*
             EXAMPLE:
@@ -222,8 +221,7 @@ public class WheelObj : MonoBehaviour
         //
         ;
         Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized ,Color.green);
-        Debug.DrawRay(transform.position, dragForce.normalized ,Color.red);
-        Debug.DrawRay(transform.position, dragForce.normalized ,Color.yellow);
+
         if (isHit)
             ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
         else
@@ -256,7 +254,7 @@ public class WheelObj : MonoBehaviour
         car.avgBackSlipRatio = 0;
         for (int i = 0; i < car.poweredWheels.Length; i++)
         {
-            car.avgBackSlipRatio += car.poweredWheels[i].slipRatio / car.poweredWheels.Length;
+            car.avgBackSlipRatio += (car.poweredWheels[i].slipRatio/100f) / car.poweredWheels.Length;
         }
         
         //car.Throttle = car.Throttle * Mathf.Clamp((0.1404f - Mathf.Abs(car.avgBackSlipRatio)) / 0.1404f, 0, 1);
@@ -277,6 +275,7 @@ public class WheelObj : MonoBehaviour
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
         slipAngle = GetSlipAngle(wheelAngularVelocity, localVelocity.x);
         slipAngle = CalcSlipAngle();
+        slipAngle = slipAngle * Mathf.Rad2Deg;
         lateralForce = PacejkaApprox(slipAngle, x_shape) * tireGripFactor;
     }
 
@@ -323,7 +322,7 @@ public class WheelObj : MonoBehaviour
 
     public float applyABS(float brakeInput, float brakeBias, float maxBrakeTorque)
     {
-        if (Mathf.Abs(slipRatio) < 0.25f) // ABS
+        if (Mathf.Abs(slipRatio/100) < 0.25f) // ABS
             return maxBrakeTorque * brakeBias * brakeInput;
             else
             return 0;

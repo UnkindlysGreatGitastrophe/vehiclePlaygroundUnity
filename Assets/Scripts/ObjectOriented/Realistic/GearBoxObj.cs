@@ -85,7 +85,7 @@ public class GearBoxObj : MonoBehaviour
                 GearToFirst(); // Switch to first gear
                 // Debug.Log("Gear To First");
             }
-            else if (car.carSpeed >= 0.95f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+            else if (car.carSpeed >= 0.94f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
             {
                 GearUP();
                 //Debug.Log("Gear Up");
@@ -110,7 +110,7 @@ public class GearBoxObj : MonoBehaviour
         if (currentGear < numOfGears-1 && gearEngaged) // Boundary checking (0 <= gear < numOfGears), also check if the gear is actually engaged and clutch is connected
         {
             //gearEngaged = false; // Disengages the clutch from the car, disconnects the flow of torque from engine to gearbox
-            Debug.Log(GetMaxGearSpeed(currentGear + 1)); 
+            Debug.Log(GetMaxGearSpeed(currentGear + 1)*0.94f); 
             StartCoroutine(NormalShift(currentGear + 1)); // Begin the shifting process
         }
     }
@@ -167,9 +167,16 @@ public class GearBoxObj : MonoBehaviour
         float tireCircumference = car.wheels[0].tireRadius * 2 * Mathf.PI; // Assuming all tires are the same radius (Not good for dragsters)
         float metersPS = tireCircumference * wheelRPS; // Convert to meters per second (m * Rad/s)
         float GetMaxGearSpeed = metersPS * 3.6f; // UNIT IS KM/H
-        float dragForce = 0.26f * GetMaxGearSpeed * GetMaxGearSpeed; // Take into account the resistance forces that are present at this speed
-        float rollResistance = 10 * GetMaxGearSpeed;
-        float resistanceDecel = 3.6f * ((dragForce + rollResistance)*4/car.GetComponent<Rigidbody>().mass); // Turn the force into deceleartion 
+        float dragForce = 0.353f * GetMaxGearSpeed * GetMaxGearSpeed; // Take into account the resistance forces that are present at this speed
+        float rollResistance = 0;
+        for (int i = 0; i < car.differential.Length; i++)
+        {
+            for (int j = 0; j < car.differential[i].connectedWheels.Length; j++)
+            {
+                rollResistance += car.differential[i].connectedWheels[j].forcePerTire.y * 0.007f;
+            }
+        }
+        float resistanceDecel = 3.6f * ((dragForce + rollResistance)/car.GetComponent<Rigidbody>().mass); // Turn the force into deceleartion 
         GetMaxGearSpeed = GetMaxGearSpeed - (Time.fixedDeltaTime * resistanceDecel); // Calculate maximum gear speed  with consideration of deceleration force
 
         return GetMaxGearSpeed;
