@@ -13,18 +13,16 @@ public class CarObj : MonoBehaviour
     public enum SteeringLock {OFF, RIGHT, LEFT};
     public enum DriveType {FWD, RWD, AWD};
     public enum StuntType {FRONTFLIP, BACKFLIP, TABLETOP, BARRELROLL, SPIN360};
-    readonly Dictionary<StuntType, float> stuntScore = new Dictionary<StuntType, float>
+    internal Dictionary<StuntType, float> stuntScore = new Dictionary<StuntType, float>
     {
         {StuntType.FRONTFLIP, 0.1f },
         {StuntType.BACKFLIP, 0.1f },
-        {StuntType.BARRELROLL, 0.08f },
+        {StuntType.BARRELROLL, 0.13f },
         {StuntType.TABLETOP, 0.15f },
-        {StuntType.SPIN360, 0.13f}
+        {StuntType.SPIN360, 0.18f}
     };
 
     public float[] repeatStuntPenalty = {1f, 0.85f, 0.6f};
-    
-
     
 
     [Header("References")]
@@ -36,7 +34,9 @@ public class CarObj : MonoBehaviour
     public WheelObj[] wheels;
     public WheelObj[] poweredWheels;
     public UIScript ui;
-    private Rigidbody rb;
+    internal Rigidbody rb;
+    public NitroObj nitroSystem;
+    public StuntObj stuntManager;
 
     private Transform LookPoint;
     private Transform MovePoint;
@@ -48,6 +48,7 @@ public class CarObj : MonoBehaviour
     public float maxBrakeTorque; // Maximum amount of braking possible for a car, Equals ebrake torque on ebrake wheels
     [Tooltip("Directs the distribution of brake force to the front and back of the wheels, 1 = front brakes only, 0 = rear brakes only")]
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
+    public float eBrakeSpin = 0.5f;
     
     [Header("Driving Assists")]
 
@@ -149,33 +150,10 @@ public class CarObj : MonoBehaviour
     [Tooltip("How quickly the car rotation slows as it reaches target rotation")]
     public float derivativeGain = 2f; // How quickly the rotiation slows as it reaches target
     [Tooltip("Stores the last error for derivative gain calculation")]
-    Vector3 errorLast = Vector3.zero;
+    internal Vector3 errorLast = Vector3.zero;
     [Tooltip("Stores the last integration for integral gain calculation")]
-    Vector3 integrationStored = Vector3.zero;
-    RaycastHit RaycastDir; // Data to Store RayCast collisions
-
-    [Header("Nitro Properties")]
-
-    [Tooltip("The time it takes to be able to reactivate nitro once the player lays off the boost")]
-    public float nitroDelay = 0f; // The time it takes to be able to reactivate nitro once the player lays off the boost
-    public float nitroDelayTime = 0.4f; // In seconds, how much the player will need to wait until they are able to use nitro again
-    public float nitroOverBoostDelayTime = 1.5f; // In seconds, how much the player will need to wait until they are able to use nitro again after overboosting
-    public float nitroHeatRate = 1.5f; // The rate of which the heating of the nitro increases as the nitro is used
-    public float nitroCoolRate = 1; // The rate of which the heating of the nitro decreases as the nitro is disengaged
-    public float airNitroCoolRate = 2; // The rate of which the heating of the nitro decreases as the nitro is disengaged while in mid-air
-    public float maxOverBoostPenalty = 3; // In seconds, this determines the amount of time a car can spend overboosting before it explodes
-    public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
-    private float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
-    public bool isOverBoosting; // Determines if the car is in the overboost zone
-    private bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
-    public bool nitroOn; // Indicates if the nitro is being used or not
-    public float boostStuntMultiplier = 1;
-
-    public float kineticBoost = 1500f;
-    public float kineticBoostMultiplier = 3.5f;
-    public float nitrousPower = 0.5f;
-
-    
+    internal Vector3 integrationStored = Vector3.zero;
+    internal RaycastHit RaycastDir; // Data to Store RayCast collisions
 
 
     [Header("Output")]
@@ -184,18 +162,21 @@ public class CarObj : MonoBehaviour
     [Tooltip("Torque produced from a forced induction system")] 
     public float inductionTorque;
     [Tooltip("Torque produced from the Gearbox ratio and final drive gear that gets sent to each axle")]
-    [Monitor] public float torqueToAxle; // Torque produced from the Gearbox after supplying it with the Torque CLutch
+    public float torqueToAxle; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
     [Tooltip("Measured in KM/H")]
-    [Monitor] public float carSpeed = 0; // Measured in KM/H
+    [Monitor]
+    public float carSpeed = 0; // Measured in KM/H
     [Tooltip("Average Slip Angle of rear wheels")]
     public float avgBackSlipAngle; // Average Back Slip Angles
     [Tooltip("Average Slip Ratio of rear wheels")]
+    //[Monitor] 
     public float avgBackSlipRatio; // Average Back Slip Ratio
 
     public Vector3 Gforces = Vector3.zero;
     private Vector3 lastVelocity = Vector3.zero;
     private Vector3 currentVelocity = Vector3.zero;
+    internal bool stuntProcessing = false;
 
 
 
@@ -356,10 +337,7 @@ public class CarObj : MonoBehaviour
         }
         else
         {   
-            float tempScore = calculateStuntScore();
-            if (tempScore != 0)
-                lastStuntScore = tempScore;
-            boostStuntMultiplier += tempScore;
+            calculateStuntScore();
             originInit = false;
             PIDengaged = true;
             PIDstrength = 1;
@@ -371,10 +349,22 @@ public class CarObj : MonoBehaviour
         carSpeed = currentVelocity.z * 3.6f; // Measured in KM/H
         getGForces();
         updateLookPoint();
+        float h = Input.GetAxis("Horizontal") * Mathf.Clamp(carSpeed/5, 0, eBrakeSpin) * eBrakeInput * Time.deltaTime;
+        rb.AddTorque(rb.transform.up * h, ForceMode.VelocityChange);
         
         
 
 
+    }
+
+    public float calculateAVGPoweredSlipRatio()
+    {
+        avgBackSlipRatio = 0;
+        for (int i = 0; i < poweredWheels.Length; i++)
+        {
+            avgBackSlipRatio += poweredWheels[i].slipRatio / 2;
+        }
+        return avgBackSlipRatio;
     }
 
     void getGForces()
@@ -448,24 +438,29 @@ public class CarObj : MonoBehaviour
 
         }
 
-        if (Input.GetKey(KeyCode.LeftShift) && nitroDelay == 0)
+        if (Input.GetKey(KeyCode.LeftShift) && nitroSystem.nitroDelay == 0)
         {
-            nitroOn = true;
-            nitroDelayInit = true;
+            nitroSystem.nitroOn = true;
+            nitroSystem.nitroDelayInit = true;
             activateNitro();
+            /*
+            if(nitroSystem != null)
+                nitroSystem.activateNitro();
+            */
         }
         else
         {
-            nitroOn = false;
-            nitroValue = Mathf.Clamp(nitroValue - Time.fixedDeltaTime * nitroCoolRate, 0, 1);
-            if (nitroDelayInit)
+            nitroSystem.nitroOn = false;
+            nitroSystem.nitroValue = Mathf.Clamp(nitroSystem.nitroValue - Time.fixedDeltaTime * nitroSystem.nitroCoolRate, 0, 1);
+            if (nitroSystem.nitroDelayInit)
             {
-                nitroDelay = (isOverBoosting) ? nitroOverBoostDelayTime : nitroDelayTime;
-                nitroDelayInit = false;
+                nitroSystem.nitroDelay = (nitroSystem.isOverBoosting) ? nitroSystem.nitroOverBoostDelayTime : nitroSystem.nitroDelayTime;
+                nitroSystem.nitroDelayInit = false;
             }
-            isOverBoosting = false;
+            nitroSystem.isOverBoosting = false;
             engine.nitroTorque = 0;
             StartCoroutine(NitroReactivation());
+            // StartCoroutine(nitroSystem.NitroReactivation());
 
         }
 
@@ -757,11 +752,15 @@ public class CarObj : MonoBehaviour
             }
         if (ui != null)
         {
-            StartCoroutine(processStunt(recordedStunts, totalScore));
+            if (!stuntProcessing)
+            {
+                StartCoroutine(processStunt(recordedStunts, totalScore));
+                stuntProcessing = true;
+            }
             //ui.showcaseStuntText(recordedStunts, totalScore);
+            
         }
-        allRecordedStunts.Add(stuntsInStreak);
-        stuntsInStreak.Clear();
+        
         return totalScore;
     }
 
@@ -769,7 +768,8 @@ public class CarObj : MonoBehaviour
     {
         
         if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(carSpeed) <= 5f) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
-        rb.AddRelativeTorque(0f, 0f, 30, ForceMode.Acceleration);
+        float h = Input.GetAxis("Horizontal");
+        rb.AddRelativeTorque(0f, 0f, h*30, ForceMode.Acceleration);
         }
 
         bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast, predicts where the car will land approximately.
@@ -823,7 +823,13 @@ public class CarObj : MonoBehaviour
                 time += Time.deltaTime;
                 if (time >= 1)
                 {
+                    nitroSystem.boostStuntMultiplier += totalScore;
+                    clutch.clutchCapacity = nitroSystem.boostStuntMultiplier;
+                    clutch.clutchMaxTorq = clutch.clutchCapacity * clutch.clutchStiffness;
                     ui.showcaseStuntText(recordedStunts, totalScore);
+                    stuntProcessing = false;
+                    allRecordedStunts.Add(stuntsInStreak);
+                    stuntsInStreak.Clear();
                     yield break;
                 }
                     
@@ -843,15 +849,15 @@ public class CarObj : MonoBehaviour
 
     public void activateNitro()
     {
-        if (nitroOn)
+        if (nitroSystem.nitroOn)
         {     
             applyNitro();
-            nitroDelayInit = true;            
-            nitroValue = Mathf.Clamp(nitroValue + Time.deltaTime * nitroHeatRate, 0, 1);
-            if (nitroValue == 1 && !isOverBoosting)
+            nitroSystem.nitroDelayInit = true;            
+            nitroSystem.nitroValue = Mathf.Clamp(nitroSystem.nitroValue + Time.deltaTime * nitroSystem.nitroHeatRate, 0, 1);
+            if (nitroSystem.nitroValue == 1 && !nitroSystem.isOverBoosting)
             {
                 Debug.Log("OverBoost Alert!");
-                isOverBoosting = true;
+                nitroSystem.isOverBoosting = true;
                 StartCoroutine(overBoostCountDown());
             }
         }
@@ -860,16 +866,16 @@ public class CarObj : MonoBehaviour
 
     public void applyNitro()
     {
-        rb.AddForce(transform.forward * kineticBoost * (kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)) * (Mathf.Max(1,boostStuntMultiplier/2)));
-        engine.nitroTorque = engine.initialTorque * nitrousPower * boostStuntMultiplier;
+        rb.AddForce(transform.forward * nitroSystem.kineticBoost * (nitroSystem.kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)) * (Mathf.Max(1,nitroSystem.boostStuntMultiplier/2)));
+        engine.nitroTorque = engine.initialTorque * nitroSystem.nitrousPower * nitroSystem.boostStuntMultiplier;
     }
 
     private IEnumerator overBoostCountDown()
     {
-        while (nitroOn)
+        while (nitroSystem.nitroOn)
         {
-            nitroOverBoostValue += 1;
-            if (nitroOverBoostValue >= maxOverBoostPenalty)
+            nitroSystem.nitroOverBoostValue += 1;
+            if (nitroSystem.nitroOverBoostValue >= nitroSystem.maxOverBoostPenalty)
             {
                 Debug.Log("Kaboom!");
             } 
@@ -881,15 +887,15 @@ public class CarObj : MonoBehaviour
 
      private IEnumerator NitroReactivation()
     {
-        while (nitroOn)
+        while (nitroSystem.nitroOn)
         {
             yield return new WaitForSeconds(1);
             
             Debug.Log("Still Boosting...");
             
         }
-        nitroOverBoostValue = 0;
-        nitroDelay = Mathf.Clamp(nitroDelay - 1 * Time.deltaTime , 0, 1);
+        nitroSystem.nitroOverBoostValue = 0;
+        nitroSystem.nitroDelay = Mathf.Clamp(nitroSystem.nitroDelay - 1 * Time.deltaTime , 0, 1);
         
     }
     #endregion

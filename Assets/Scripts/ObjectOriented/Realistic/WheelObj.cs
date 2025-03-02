@@ -40,6 +40,7 @@ public class WheelObj : MonoBehaviour
     [Header("Wheel Outputs")]
     public float ReactionTorqueToWheel = 0; // N*m ->  1 kilogram meter per second squared * meters -> (kg*m/s^2)*m
     public float wheelAngularAcceleration = 0; //RADS/SEC^2
+    [Monitor]
     public float wheelAngularVelocity = 0; // RADS/SEC
     public float Speed = 0; // M/S
 
@@ -48,7 +49,7 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-    public float longitudinalForce; // Newtons -> kg*m/s^2
+    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
     [Monitor] public float slipRatio;
     public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2
@@ -76,7 +77,7 @@ public class WheelObj : MonoBehaviour
     float x_shape = 1.35f;
     public float z_shape = 1.3f;
     float stiff = 10;
-    float curve = 0.995f;
+    float curve = 0;
 
     [Header("Brakes Variables")]
     public bool hasEBrake;
@@ -194,7 +195,7 @@ public class WheelObj : MonoBehaviour
     {
         localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
         Speed = localVelocity.magnitude * 3.6f;
-        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z) * 100f;
+        slipRatio = GetSlipRatio(wheelAngularVelocity, localVelocity.z);
         driveForce = PacejkaApprox(slipRatio, z_shape) 
         * tireGripFactor;
         if (car.hasTC)

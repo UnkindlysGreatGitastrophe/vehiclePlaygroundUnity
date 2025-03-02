@@ -85,15 +85,27 @@ public class GearBoxObj : MonoBehaviour
                 GearToFirst(); // Switch to first gear
                 // Debug.Log("Gear To First");
             }
-            else if (car.carSpeed >= 0.94f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
-            {
-                GearUP();
-                //Debug.Log("Gear Up");
-            }
+            
             else if (currentGear != 0 && car.carSpeed < 0.85 *GetMaxGearSpeed(currentGear - 1)  && currentGear > 2) // If the car is NOT in reverse gear, is gear 2 or higher, and the car speed is 85% or less than the maximum speed of the previous gear, we downshift.
             {
                 GearDOWN();
                 //Debug.Log("Gear Down");
+            }
+            else if (!car.nitroSystem.nitroOn)
+            {
+                if (Mathf.Abs(car.calculateAVGPoweredSlipRatio()) < (.10f + (.10f *car.poweredWheels[0].tireGripFactor/2)) && (car.engine.engineAngularVelocity * car.engine.AV_2_RPM) > (car.engine.rpmLimit*0.99f) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+                {
+                    GearUP();
+                    //Debug.Log("Gear Up");
+                }
+            }
+            else 
+            {
+                if (car.carSpeed >= 0.9f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+                {
+                    GearUP();
+                    //Debug.Log("Gear Up");
+                }
             }
             
             oldCarSpeed = car.carSpeed;
@@ -162,7 +174,7 @@ public class GearBoxObj : MonoBehaviour
         {
             return 0;
         }
-        float maxRPS = (car.engine.rpmLimit - (car.engine.overRevPenalty/2)) / 60; // Maximum Revs per second
+        float maxRPS = (car.engine.rpmLimit - car.engine.overRevPenalty) / 60; // Maximum Revs per second
         float wheelRPS = maxRPS / car.gearBox.get_specific_ratio(gear) / car.gearBox.finalDriveGear; // Wheel Revs Per Second (Rad/s)
         float tireCircumference = car.wheels[0].tireRadius * 2 * Mathf.PI; // Assuming all tires are the same radius (Not good for dragsters)
         float metersPS = tireCircumference * wheelRPS; // Convert to meters per second (m * Rad/s)

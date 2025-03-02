@@ -26,17 +26,23 @@ public class EngineObj : MonoBehaviour
     [Tooltip("The engine's angular velocity at a given time, unit is in RAD/S")]
     public float engineAngularVelocity = 0.0f;
     [Tooltip("The engine's Revolutions per Minute, measured in RPMs")]
-    [Monitor] private float engineRPM = 0.0f;
+    //[Monitor] 
+    private float engineRPM = 0.0f;
     [Header("Engine Torques")]
     [Tooltip("The torque produced by the engine without any drag penalties")]
-    [Monitor] public float initialTorque;
+    //[Monitor] 
+    public float initialTorque;
     [Tooltip("The resistance torque produced by engine drag and the engine brake")]
-    [Monitor] public float dragTorque; // Resistance torque opposing the initial torque the car engine generates
+    //[Monitor] 
+    public float dragTorque; // Resistance torque opposing the initial torque the car engine generates
     [Tooltip("The output torque, adds together both the initial torque and the resistance torques")]
-    [Monitor] public float torque_out; // Output torque of the engine itself
+    //[Monitor] 
+    public float torque_out; // Output torque of the engine itself
     [Tooltip("Clutch torque, used to try and balance the engine RPM with the transmission")]
-    [Monitor] public float clutch_torque;
-    [Monitor] private float horsepower;
+    //[Monitor] 
+    public float clutch_torque;
+    //[Monitor] 
+    private float horsepower;
 
 
     
@@ -63,7 +69,8 @@ public class EngineObj : MonoBehaviour
             if (Mathf.Round(engineAngularVelocity * AV_2_RPM) >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
             {
                 engineAngularVelocity -= overRevPenalty * RPM_2_AV;
-                initialTorque = 0;
+                if (!car.nitroSystem.nitroOn)
+                    initialTorque = 0;
             }
                 if(car.gearBox.get_ratio() != 0.0f && car.gearBox.gearEngaged) // If not in Neutral or shifting
                 clutch_torque = car.clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
@@ -82,7 +89,7 @@ public class EngineObj : MonoBehaviour
             engineAngularVelocity = Mathf.Clamp(engineAngularVelocity, rpmLimitIdle*RPM_2_AV, rpmLimit * RPM_2_AV); // Clamp the engine angular velocity with the max and minimum RPM.
             engineRPM = engineAngularVelocity * AV_2_RPM; // Engine RPM gets updated accordingly
             horsepower = Mathf.Abs(((initialTorque // Total Torque Output is the initial torque of engine - the drag torque - the clutch torque trying to balance the rpms with the drivetrain.
-            - dragTorque * Mathf.Sign(engineAngularVelocity)) * engineRPM)/(7127));
+            - dragTorque + nitroTorque* Mathf.Sign(engineAngularVelocity)) * engineRPM)/(7127));
         }
     #endregion
 }

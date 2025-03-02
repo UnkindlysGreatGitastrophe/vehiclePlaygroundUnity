@@ -36,11 +36,11 @@ public class ClutchObj : MonoBehaviour
 
     [Header("Clutch V2 parameters")]
     [Tooltip("Torque capacity. It is the amount of torque that can be transmitted by the clutch when it's slipping or fully closed.")]
-    [SerializeField] private float clutchCapacity = 1.3f; // The capacity factor of the clutch, contributes to the max torque a clutch can manage
+    [SerializeField] internal float clutchCapacity = 1.3f; // The capacity factor of the clutch, contributes to the max torque a clutch can manage
     [Tooltip("The stiffness of the clutch.")]
-    [SerializeField] private float clutchStiffness = 500f; // The Stiffness of the clutch, also contributes to the max torque.
+    [SerializeField] internal float clutchStiffness = 500f; // The Stiffness of the clutch, also contributes to the max torque.
     [Tooltip("Maximum amount of torque that the clutch can feed into the engine and gearbox, it is equal to: clutch stiffness * clutch capacity")]
-    [SerializeField] private float clutchMaxTorq;
+    [SerializeField] internal float clutchMaxTorq;
 
 
     [Header("Constants")]

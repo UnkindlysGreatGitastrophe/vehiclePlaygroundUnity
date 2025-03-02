@@ -47,7 +47,7 @@ public class UIScript : MonoBehaviour
     void Start()
     {
         engine = car.GetComponentInChildren<EngineObj>();
-        engineRPMPerPoint = (float) 1 / engineRPMPoints.Length;
+        engineRPMPerPoint = (float) 1 / engineRPMPoints.Length * (car.engine.rpmLimit-engine.overRevPenalty);
         shiftIndicatorText = new string[car.gearBox.numOfGears+1];
         shiftIndicatorText[0] = "R";
         shiftIndicatorText[1] = "N";
@@ -60,7 +60,7 @@ public class UIScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        engineRPMFillAmount = (engine.engineAngularVelocity * engine.AV_2_RPM - engine.rpmLimitIdle) / (engine.rpmLimit-engine.overRevPenalty);
+        engineRPMFillAmount = (engine.engineAngularVelocity * engine.AV_2_RPM - engine.rpmLimitIdle) / (engine.rpmLimit-engine.overRevPenalty) * engine.rpmLimit;
         updateRPMReader();
         updateGearReader();
         updateSpeedoMeter();
@@ -97,27 +97,27 @@ public class UIScript : MonoBehaviour
 
     void updateBoostGauge()
     {
-        nitroFillImage.fillAmount = (car.nitroValue - 0) / (1 - 0) * (maxFillAmount - 0) + 0;
-        Color newColor = Color.Lerp(Color.yellow, Color.red, car.nitroValue);
+        nitroFillImage.fillAmount = (car.nitroSystem.nitroValue - 0) / (1 - 0) * (maxFillAmount - 0) + 0;
+        Color newColor = Color.Lerp(Color.yellow, Color.red, car.nitroSystem.nitroValue);
         nitroFillImage.color = newColor;
         boostTipPivot.localEulerAngles = new Vector3(0, 0,-nitroFillImage.fillAmount*360f);
 
-        if (!car.isOverBoosting)
+        if (!car.nitroSystem.isOverBoosting)
         {
             overboostInit = true;
             flickerTime = 0f;
         }
-        if (car.nitroValue == 0)
+        if (car.nitroSystem.nitroValue == 0)
         {
             nitroIcon.sprite = nitroIcons[0];
         }
         else
         {
-            if (car.nitroValue > 0 && !car.isOverBoosting)
+            if (car.nitroSystem.nitroValue > 0 && !car.nitroSystem.isOverBoosting)
             {
                 nitroIcon.sprite = nitroIcons[1];
             }
-            if (car.isOverBoosting && car.nitroOn)
+            if (car.nitroSystem.isOverBoosting && car.nitroSystem.nitroOn)
             {
                 if (overboostInit == true)
                 {
@@ -180,7 +180,7 @@ public class UIScript : MonoBehaviour
             }
         stuntDisplayText.text = stuntText;
         nitroGainDisplayText.text = "+" + boostMultiplier.ToString()+ "X " + "Nitro Power Bonus";
-        nitroPowerMultiplierText.text = car.boostStuntMultiplier.ToString("#.00") + "x";
+        nitroPowerMultiplierText.text = car.nitroSystem.boostStuntMultiplier.ToString("#.00") + "x";
         stuntDisplayText.enabled = true;
         nitroGainDisplayText.enabled = true;
         stuntUIAnimation.enabled = true;
