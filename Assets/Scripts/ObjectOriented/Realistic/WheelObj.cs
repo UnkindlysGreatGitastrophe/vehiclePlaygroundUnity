@@ -5,6 +5,7 @@ using JetBrains.Annotations;
 using Baracuda.Monitoring;
 
 using UnityEngine;
+using Unity.VisualScripting;
 
 public class WheelObj : MonoBehaviour
 {
@@ -14,7 +15,7 @@ public class WheelObj : MonoBehaviour
 
     [Header("Suspension Parameters")]
     public float springRate; public float damperRate; public float suspensionRestLength; 
-    float contactDepth; float contactSpeed; float lastContactDepth; float maxHitDistance; float hitDistance;
+    [Monitor] float contactDepth; [Monitor] float contactSpeed; float lastContactDepth; float maxHitDistance; float hitDistance;
 
     [Header("Suspension Forces")]
     [SerializeField] private float Fz;
@@ -40,7 +41,6 @@ public class WheelObj : MonoBehaviour
     [Header("Wheel Outputs")]
     public float ReactionTorqueToWheel = 0; // N*m ->  1 kilogram meter per second squared * meters -> (kg*m/s^2)*m
     public float wheelAngularAcceleration = 0; //RADS/SEC^2
-    [Monitor]
     public float wheelAngularVelocity = 0; // RADS/SEC
     public float Speed = 0; // M/S
 
@@ -49,8 +49,8 @@ public class WheelObj : MonoBehaviour
     public Vector3 localVelocity; // M/S
 
     [Header("Longitudinal Variables")]
-    [Monitor] public float longitudinalForce; // Newtons -> kg*m/s^2
-    [Monitor] public float slipRatio;
+    public float longitudinalForce; // Newtons -> kg*m/s^2
+    public float slipRatio;
     public float driveForce;
     Vector3 dragForce; // Newtons -> kg*m/s^2
     Vector3 rollResistance; // Newtons -> kg*m/s^2
@@ -61,7 +61,7 @@ public class WheelObj : MonoBehaviour
     public float steeringAngle; 
 
     public float lateralForce;
-    [Monitor] public float slipAngle;
+    public float slipAngle;
     public float tireGripFactor; 
     // These need to be global
     float differentialSlipRatio = 0.0f;
@@ -135,8 +135,10 @@ public class WheelObj : MonoBehaviour
         contactSpeed = (contactDepth - lastContactDepth) / Time.deltaTime; // Distance / Time
         lastContactDepth = contactDepth;
 
-        springForce = contactDepth * springRate;
-        damperForce = contactSpeed * damperRate;
+            springForce = contactDepth * springRate;
+            damperForce = contactSpeed * damperRate;
+        
+            
         Fz = (springForce + damperForce) * 100;
         forcePerTire = Vector3.Normalize(RaycastDir.normal) * Fz; //Why 100?
 
@@ -168,6 +170,24 @@ public class WheelObj : MonoBehaviour
             //+ rollResistance
             , transform.position);
         }
+    }
+
+    public IEnumerator disengageGrip(float prevGripFactor)
+    {   
+        while (tireGripFactor < prevGripFactor)
+        {
+            if (car.eBrakeInput != 1)
+            {
+                tireGripFactor = tireGripFactor + ( 1 * Time.deltaTime);
+            }
+            else
+            {
+                tireGripFactor = tireGripFactor + ( 0.5f * Time.deltaTime);
+            }
+            yield return null;
+        }
+        tireGripFactor = prevGripFactor;
+        yield break;
     }
 
     #endregion

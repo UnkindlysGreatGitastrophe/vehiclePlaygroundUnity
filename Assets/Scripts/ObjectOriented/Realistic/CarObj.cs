@@ -112,6 +112,7 @@ public class CarObj : MonoBehaviour
     [Header("Stunts")]
     [Tooltip("Rate of which the car can rotate in the air")]
     public float airRotationAmount = 50f; // Rate of which the rotation of the car is performed when in the air
+    private float angularDrag = 1.5f; private float angularDragAir;
     [Tooltip("Stunts!")]
     public int numFrontFlips = 0; // Stunt Count
     [Tooltip("Stunts!")]
@@ -201,7 +202,7 @@ public class CarObj : MonoBehaviour
         torqueDistribution = Mathf.Clamp(torqueDistribution, 0, 1); // Make sure it is within the correct boundaries
         torqueRatio[0] = torqueDistribution; // Distribute power to rear wheels
         torqueRatio[1] = 1-torqueDistribution; // Then the remainder to the front wheels
-
+        angularDragAir = angularDrag * 3f;
         InitializePoweredWheels();
 
         
@@ -330,6 +331,7 @@ public class CarObj : MonoBehaviour
             }
             AerialRotation();
             TrackStunts();
+            rb.angularDrag = angularDragAir;
             if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
                 PIDengaged = true;
             }
@@ -337,10 +339,20 @@ public class CarObj : MonoBehaviour
         }
         else
         {   
+            if (!PIDengaged)
+            {
+                for (int i = 0;i<wheels.Length;i++)
+                {   
+                    float previousGrip = wheels[i].tireGripFactor;
+                    wheels[i].tireGripFactor = 0;
+                    StartCoroutine(wheels[i].disengageGrip(previousGrip));
+                }
+            }
             calculateStuntScore();
             originInit = false;
             PIDengaged = true;
             PIDstrength = 1;
+            rb.angularDrag = angularDrag;
             totalRotation = Vector3.zero;
 
         }
