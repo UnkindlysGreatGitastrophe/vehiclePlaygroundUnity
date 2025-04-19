@@ -36,6 +36,10 @@ public class UIScript : MonoBehaviour
     public float maxFlickerTime = 0.7f;
     private bool overboostInit = true;
 
+    [Header("Boost Indicator")]
+    public Image healthFillImage;
+
+
     [Header("Stunt UI")]
     public TextMeshProUGUI stuntDisplayText;
     public TextMeshProUGUI nitroGainDisplayText;
@@ -65,6 +69,7 @@ public class UIScript : MonoBehaviour
         updateGearReader();
         updateSpeedoMeter();
         updateBoostGauge();
+        updateHealthGauge();
     }
 
     void updateRPMReader()
@@ -140,6 +145,12 @@ public class UIScript : MonoBehaviour
             }
 
         }
+        
+    }
+
+    void updateHealthGauge()
+    {
+        healthFillImage.fillAmount = (car.currentCarHealth) / car.CarHealth;
         
     }
 

@@ -56,6 +56,7 @@ public class EngineObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
+        car = transform.parent.GetComponent<CarObj>();
         RPM_2_AV = 1.0f/AV_2_RPM;
     }
 
@@ -64,21 +65,30 @@ public class EngineObj : MonoBehaviour
     #region Engine
         public void engineOperation()
         {
-            initialTorque = engineCurve.Evaluate(engineRPM) * car.Throttle; // The torque the engine makes, based on RPM and throttle
-            dragTorque = engineBrake + (Mathf.Abs(engineAngularVelocity)*AV_2_RPM*engineDrag); // The friction torque that counters initial torque, gets higher with RPMs
-            if (Mathf.Round(engineAngularVelocity * AV_2_RPM) >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
+            if (car.status == CarObj.CarStatus.RUNNING)
             {
-                engineAngularVelocity -= overRevPenalty * RPM_2_AV;
-                if (!car.nitroSystem.nitroOn)
-                    initialTorque = 0;
+                initialTorque = engineCurve.Evaluate(engineRPM) * car.Throttle; // The torque the engine makes, based on RPM and throttle
+                dragTorque = engineBrake + (Mathf.Abs(engineAngularVelocity)*AV_2_RPM*engineDrag); // The friction torque that counters initial torque, gets higher with RPMs
+                if (Mathf.Round(engineAngularVelocity * AV_2_RPM) >= rpmLimit) // If the Engine RPM is > RPMLimit, we decrease the angular velocity, and apply no initial torque
+                {
+                    engineAngularVelocity -= overRevPenalty * RPM_2_AV;
+                    if (!car.nitroSystem.nitroOn)
+                        initialTorque = 0;
+                }
+                    if(car.gearBox.get_ratio() != 0.0f && car.gearBox.gearEngaged) // If not in Neutral or shifting
+                    clutch_torque = car.clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
+                else
+                {
+                    clutch_torque = 0; // Clutch is not connected
+                    car.clutch.clutchLock = 0;
+                }
             }
-                if(car.gearBox.get_ratio() != 0.0f && car.gearBox.gearEngaged) // If not in Neutral or shifting
-                clutch_torque = car.clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
             else
             {
-                clutch_torque = 0; // Clutch is not connected
-                car.clutch.clutchLock = 0;
+                initialTorque = 0;
+                clutch_torque = 0;
             }
+            
             torque_out = initialTorque // Total Torque Output is the initial torque of engine - the drag torque - the clutch torque trying to balance the rpms with the drivetrain.
             - dragTorque * Mathf.Sign(engineAngularVelocity)
             - clutch_torque

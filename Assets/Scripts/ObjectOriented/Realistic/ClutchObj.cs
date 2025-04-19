@@ -50,6 +50,7 @@ public class ClutchObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
+        car = transform.parent.GetComponent<CarObj>();
         clutchMaxTorq = clutchStiffness * clutchCapacity; // What is the very most torque that we can feed into the gearbox?
     }
 

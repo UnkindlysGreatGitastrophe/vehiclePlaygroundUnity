@@ -71,7 +71,7 @@ public class DifferentialObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
-        
+        car = transform.parent.GetComponent<CarObj>();
         connectedWheels = new WheelObj[transform.GetChild(0).childCount];
         Assert.AreEqual(2, connectedWheels.Length);
 

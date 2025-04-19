@@ -26,6 +26,7 @@ public class ForcedInductionObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
+        car = transform.parent.GetComponent<CarObj>();
         psiPerRPM = boostPSI/car.engine.rpmLimit;
     }
 

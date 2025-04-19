@@ -68,7 +68,7 @@ public class StuntObj : MonoBehaviour
     {
         angleDiffs = Vector3.zero; // The difference between the current and last rotation in Euler Angles
         Quaternion difference = Quaternion.Inverse(car.rb.rotation) * lastRotation; // Take the difference between current and last rotation (Result is in Quaternions)
-        lastRotation = car.rb.rotation; // Update last rotation
+        lastRotation = Quaternion.identity; // Update last rotation
 
         angleDiffs.x = Mathf.DeltaAngle(0, difference.eulerAngles.x); // Calculates the shortest distance between 0 degrees and the euler angle of the difference in all 3 dimensions 
         angleDiffs.y = Mathf.DeltaAngle(0, difference.eulerAngles.y); // (This is used to prevent getting -270 degrees instead of 90 degrees for example)
@@ -79,13 +79,13 @@ public class StuntObj : MonoBehaviour
 
         // Increase stunt count for when a full revolution is complete.
 
-        if (totalRotation.x < -270f) 
+        if (totalRotation.x < -180f) 
         {
             totalRotation.x = 0;
             numFrontFlips++;
             stuntsInStreak.Add(CarObj.StuntType.FRONTFLIP);
         }
-        else if (totalRotation.x > 270f)
+        else if (totalRotation.x > 180f)
         {
             totalRotation.x = 0;
             numBackFlips++;
@@ -95,14 +95,14 @@ public class StuntObj : MonoBehaviour
 
         totalRotation.y += angleDiffs.y;
 
-        if (totalRotation.y < -270f)
+        if (totalRotation.y < -180f)
         {
             totalRotation.y = 0;
             numRight360s++;
             stuntsInStreak.Add(CarObj.StuntType.SPIN360);
 
         }
-        else if (totalRotation.y > 270f)
+        else if (totalRotation.y > 180f)
         {
             totalRotation.y = 0;
             numLeft360s++;
@@ -112,14 +112,14 @@ public class StuntObj : MonoBehaviour
 
         totalRotation.z += angleDiffs.z;
 
-        if (totalRotation.z < -270f)
+        if (totalRotation.z < -180f)
         {
             totalRotation.z = 0;
             numRightBarrelRolls++;
             stuntsInStreak.Add(CarObj.StuntType.BARRELROLL);
 
         }
-        else if (totalRotation.z > 270f)
+        else if (totalRotation.z > 180f)
         {
             totalRotation.z = 0;
             numLeftBarrelRolls++;

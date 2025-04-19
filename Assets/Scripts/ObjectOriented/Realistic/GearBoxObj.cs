@@ -40,6 +40,7 @@ public class GearBoxObj : MonoBehaviour
 
         // DEBUGGING
         this.StartMonitoring();
+        car = transform.parent.GetComponent<CarObj>();
         // VARIABLE INITIALIZING
         numOfGears = gearRatios.Length; // Dynamically assign numOfGears based on gearRatios array
         // REFERENCING
@@ -122,7 +123,7 @@ public class GearBoxObj : MonoBehaviour
         if (currentGear < numOfGears-1 && gearEngaged) // Boundary checking (0 <= gear < numOfGears), also check if the gear is actually engaged and clutch is connected
         {
             //gearEngaged = false; // Disengages the clutch from the car, disconnects the flow of torque from engine to gearbox
-            Debug.Log(GetMaxGearSpeed(currentGear + 1)*0.94f); 
+            //Debug.Log(GetMaxGearSpeed(currentGear + 1)*0.94f); 
             StartCoroutine(NormalShift(currentGear + 1)); // Begin the shifting process
         }
     }
@@ -151,7 +152,7 @@ public class GearBoxObj : MonoBehaviour
     {
         if (currentGear > 0 && gearEngaged) // Boundary check, check if gear is engaged
         {
-        Debug.Log(GetMaxGearSpeed(currentGear - 1));
+        //Debug.Log(GetMaxGearSpeed(currentGear - 1));
         StartCoroutine(ShiftRevMatch(currentGear - 1)); // Attempt to rev match the shift (Quicker than normal process, but may not always complete)
         }
     }

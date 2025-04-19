@@ -6,6 +6,7 @@ using System.Text.RegularExpressions;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices.WindowsRuntime;
+using System.Threading;
 
 
 public class CarObj : MonoBehaviour
@@ -13,6 +14,7 @@ public class CarObj : MonoBehaviour
     public enum SteeringLock {OFF, RIGHT, LEFT};
     public enum DriveType {FWD, RWD, AWD};
     public enum StuntType {FRONTFLIP, BACKFLIP, TABLETOP, BARRELROLL, SPIN360};
+    public enum CarStatus {RUNNING, STALLED};
     internal Dictionary<StuntType, float> stuntScore = new Dictionary<StuntType, float>
     {
         {StuntType.FRONTFLIP, 0.1f },
@@ -69,7 +71,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
     [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
-    public bool PIDengaged; // Bool that allows the car to stablize itself in the air
+    [Monitor] public bool PIDengaged; // Bool that allows the car to stablize itself in the air
 
     public float PIDstrength = 1;
     [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
@@ -179,8 +181,19 @@ public class CarObj : MonoBehaviour
     private Vector3 currentVelocity = Vector3.zero;
     internal bool stuntProcessing = false;
 
+    [Header("Car Health")]
 
+    public float CarHealth = 100f;
 
+    float healthRegenRate = 1.5f;
+
+    float healthRegenDelay = 5f;
+    [Monitor] public float currentCarHealth = 100f;
+
+    private bool canRegen;
+    public CarStatus status = CarStatus.RUNNING;
+    private Coroutine regenCo;
+    
 
 
 
@@ -277,31 +290,35 @@ public class CarObj : MonoBehaviour
         
         GetDownForce();
         // Car Operation begins here:
-        engine.engineOperation(); // Function for running the engine
-        if (induction != null)
+        if (status == CarStatus.RUNNING)
         {
-            if (induction.type == ForcedInductionObj.ForcedInductionType.TURBO)
-                induction.calculateTurboPSI();
-            else if (induction.type == ForcedInductionObj.ForcedInductionType.SUPERCHARGE)
-                induction.calculateSuperChargePSI();
-            inductionTorque = induction.convertPSItoTorque();
-            engine.torque_out += inductionTorque;
+            engine.engineOperation(); // Function for running the engine
+            if (induction != null)
+            {
+                if (induction.type == ForcedInductionObj.ForcedInductionType.TURBO)
+                    induction.calculateTurboPSI();
+                else if (induction.type == ForcedInductionObj.ForcedInductionType.SUPERCHARGE)
+                    induction.calculateSuperChargePSI();
+                inductionTorque = induction.convertPSItoTorque();
+                engine.torque_out += inductionTorque;
+            }
+            if(gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
+                Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
+            else
+            {
+                Tc = 0; // Clutch is not connected
+                engine.clutch_torque = 0;
+                clutch.clutchLock = 0;
+            }
+                
+            for (int i = 0; i < differential.Length; i++) // Iterate on each wheel axle that is powered by the engine
+            {
+                torqueToAxle = (Tc * gearBox.get_ratio() * gearBox.finalDriveGear) * torqueRatio[i]; // Calculate Potential Torque to each wheel
+                differential[i].calculateDifferential(); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
+                //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
         }
-		if(gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
-			Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
-        else
-        {
-            Tc = 0; // Clutch is not connected
-            engine.clutch_torque = 0;
-            clutch.clutchLock = 0;
         }
-            
-        for (int i = 0; i < differential.Length; i++) // Iterate on each wheel axle that is powered by the engine
-        {
-            torqueToAxle = (Tc * gearBox.get_ratio() * gearBox.finalDriveGear) * torqueRatio[i]; // Calculate Potential Torque to each wheel
-            differential[i].calculateDifferential(); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
-            //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
-        }
+        
         for (int i = 0; i < wheels.Length; i++) // Iterate on all whels
         {
             wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque); // Get the brake torque here
@@ -317,45 +334,49 @@ public class CarObj : MonoBehaviour
             dragForce 
             , transform.position);
 
-        if (isCarMidAir()) // If the car is in the air, All 4 raycasts are not touching the ground, we allow the mid-air manuevers
+        if (status == CarStatus.RUNNING)
         {
-            if (!originInit)
+            if (isCarMidAir()) // If the car is in the air, All 4 raycasts are not touching the ground, we allow the mid-air manuevers
             {
-                originInit = true;
-                lastRotation = rb.rotation;
-                lastRotationPID = Vector3.ProjectOnPlane(rb.transform.forward, Vector3.up); // This is where initialization happens for rotations
-            }
-            if (PIDengaged)
-            {
-                PID();
-            }
-            AerialRotation();
-            TrackStunts();
-            rb.angularDrag = angularDragAir;
-            if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
-                PIDengaged = true;
-            }
-            
-        }
-        else
-        {   
-            if (!PIDengaged)
-            {
-                for (int i = 0;i<wheels.Length;i++)
-                {   
-                    float previousGrip = wheels[i].tireGripFactor;
-                    wheels[i].tireGripFactor = 0;
-                    StartCoroutine(wheels[i].disengageGrip(previousGrip));
+                if (!originInit)
+                {
+                    originInit = true;
+                    lastRotation = rb.rotation;
+                    lastRotationPID = Vector3.ProjectOnPlane(rb.transform.forward, Vector3.up); // This is where initialization happens for rotations
                 }
+                if (PIDengaged)
+                {
+                    PID();
+                }
+                AerialRotation();
+                TrackStunts();
+                rb.angularDrag = angularDragAir;
+                if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
+                    PIDengaged = true;
+                }
+                
             }
-            calculateStuntScore();
-            originInit = false;
-            PIDengaged = true;
-            PIDstrength = 1;
-            rb.angularDrag = angularDrag;
-            totalRotation = Vector3.zero;
+            else
+            {   
+                if (!PIDengaged)
+                {
+                    for (int i = 0;i<wheels.Length;i++)
+                    {   
+                        float previousGrip = wheels[i].tireGripFactor;
+                        wheels[i].tireGripFactor = 0;
+                        StartCoroutine(wheels[i].disengageGrip(previousGrip));
+                    }
+                }
+                calculateStuntScore();
+                originInit = false;
+                PIDengaged = true;
+                PIDstrength = 1;
+                rb.angularDrag = angularDrag;
+                totalRotation = Vector3.zero;
 
+            }
         }
+        
         lastVelocity = currentVelocity;
         currentVelocity = transform.InverseTransformDirection(rb.velocity);
         carSpeed = currentVelocity.z * 3.6f; // Measured in KM/H
@@ -450,7 +471,7 @@ public class CarObj : MonoBehaviour
 
         }
 
-        if (Input.GetKey(KeyCode.LeftShift) && nitroSystem.nitroDelay == 0)
+        if (Input.GetKey(KeyCode.LeftShift) && nitroSystem.nitroDelay == 0 && status == CarStatus.RUNNING)
         {
             nitroSystem.nitroOn = true;
             nitroSystem.nitroDelayInit = true;
@@ -487,6 +508,14 @@ public class CarObj : MonoBehaviour
         {
             if (gearBox.Transmissiontype == GearBoxObj.GearboxType.MANUAL) // Manual Transmissions operate as normal
         {
+            if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
+            {
+                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                {
+                    PIDengaged = false;
+                    PIDstrength = 0;
+                }
+            }
             if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
             {
                 Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
@@ -520,6 +549,14 @@ public class CarObj : MonoBehaviour
         {
             if (!AutoReverseMode)
             {
+                if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
+            {
+                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                {
+                    PIDengaged = false;
+                    PIDstrength = 0;
+                }
+            }
                 if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Operate as normal if we aren't in reverse mode for automatics
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
@@ -552,6 +589,14 @@ public class CarObj : MonoBehaviour
             }
             else
             {
+            if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
+                {
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                    {
+                        PIDengaged = false;
+                        PIDstrength = 0;
+                    }
+                }
                 if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
                 {
                     BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
@@ -662,7 +707,14 @@ public class CarObj : MonoBehaviour
         
         else
         {
-            rb.AddTorque(rb.transform.up * h, ForceMode.VelocityChange);
+            if (!PIDengaged)
+            {
+                rb.AddTorque(rb.transform.up * h, ForceMode.VelocityChange);
+            }
+            else
+            {
+                rb.AddTorque(rb.transform.up * h/4, ForceMode.VelocityChange);
+            }
         }
         //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
     }
@@ -890,6 +942,10 @@ public class CarObj : MonoBehaviour
             if (nitroSystem.nitroOverBoostValue >= nitroSystem.maxOverBoostPenalty)
             {
                 Debug.Log("Kaboom!");
+                currentCarHealth = 0;
+                StartCoroutine(RecoverFromStall());
+                rb.AddExplosionForce(35000, rb.position ,10,300f,ForceMode.Impulse);
+                rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * 3500,ForceMode.Impulse);
             } 
             yield return new WaitForSeconds(1);
 
@@ -912,5 +968,90 @@ public class CarObj : MonoBehaviour
     }
     #endregion
 
+    #region Car Health
+
+    private IEnumerator regenHealth()
+    {
+        while (currentCarHealth < CarHealth && canRegen)
+        {
+            currentCarHealth = currentCarHealth + 3*Time.deltaTime;
+            currentCarHealth = Mathf.Clamp(currentCarHealth, 0, CarHealth);
+            yield return null;
+        }
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        if( regenCo != null ) StopCoroutine( regenCo );
+
+        Vector3 impactVelocity = collision.relativeVelocity;
+
+        //float test = Vector3.Dot(impactVelocity,collision.contacts[0].normal);
+        float dotMultiplier = Vector3.Dot(transform.up,collision.contacts[0].normal);
+        Debug.Log(dotMultiplier);
+        if (dotMultiplier > 0.75f)
+        {
+            dotMultiplier = 1;
+        }
+
+    // Subtracting a minimum threshold can avoid tiny scratches at negligible speeds.
+        float magnitude = Mathf.Max(0f, impactVelocity.magnitude - 5);
+        // Using sqrMagnitude can feel good here,
+        // making light taps less damaging and high-speed strikes devastating.
+
+        float damage =  magnitude * (1 - Mathf.Max(dotMultiplier,0)) * 1;
+
+        if (currentCarHealth <= 0 && status == CarStatus.RUNNING)
+        {
+            
+            StartCoroutine(RecoverFromStall());
+        }
+
+        //if (collision.contacts[0].thisCollider.name != "BottomOfCar")
+        //{
+            currentCarHealth = Mathf.Max(0,currentCarHealth - Mathf.Abs(damage));
+        //}
+        
+        canRegen = false;
+
+        regenCo = StartCoroutine(reactiveRegen());
     
+    }
+
+    private IEnumerator RecoverFromStall()
+    {
+        float previousAngDrap = rb.angularDrag;
+        status = CarStatus.STALLED;
+        rb.angularDrag = 0;
+        float timeRemaining = 0;
+        while (timeRemaining < 5)
+        {
+            yield return null;
+            timeRemaining = timeRemaining + Time.deltaTime;
+        }
+        status = CarStatus.RUNNING;
+        rb.angularDrag = previousAngDrap;
+        if (currentCarHealth <= 10)
+        {
+            currentCarHealth = 10f;
+        }
+            
+    }
+
+    private IEnumerator reactiveRegen()
+    {
+        float countdown = 0;
+        while (countdown < healthRegenDelay)
+        {
+            //Debug.Log(countdown);
+            countdown++;
+            yield return new WaitForSeconds(1);
+        }
+        canRegen = true;
+        StartCoroutine(regenHealth());
+    }
+
+    #endregion
+
+
 }

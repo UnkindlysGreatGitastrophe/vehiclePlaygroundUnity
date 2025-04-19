@@ -88,6 +88,7 @@ public class WheelObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
+        car = transform.parent.parent.parent.GetComponent<CarObj>();
         carRigidBody = car.GetComponent<Rigidbody>();
         wheels = transform.GetChild(0).gameObject;
         maxHitDistance = suspensionRestLength + tireRadius;
@@ -160,10 +161,10 @@ public class WheelObj : MonoBehaviour
             lateralForce = 0;
         }
         
-        
+        carRigidBody.AddForceAtPosition(-transform.up*(car.downForce/4),transform.position);
+
         if(isHit)
         {
-            carRigidBody.AddForceAtPosition(-transform.up*(car.downForce/4),transform.position);
             carRigidBody.AddForceAtPosition(lateralForce * transform.right, transform.position);
             carRigidBody.AddForceAtPosition((longitudinalForce * transform.forward) 
             //+ dragForce 
@@ -176,6 +177,8 @@ public class WheelObj : MonoBehaviour
     {   
         while (tireGripFactor < prevGripFactor)
         {
+            //Debug.Log(tireGripFactor);
+
             if (car.eBrakeInput != 1)
             {
                 tireGripFactor = tireGripFactor + ( 1 * Time.deltaTime);
@@ -184,6 +187,12 @@ public class WheelObj : MonoBehaviour
             {
                 tireGripFactor = tireGripFactor + ( 0.5f * Time.deltaTime);
             }
+
+            if (car.nitroSystem.nitroOn)
+                car.rb.AddForceAtPosition(car.wheels[0].transform.forward*10000*(1-(tireGripFactor/prevGripFactor)),car.transform.position);
+                                
+
+                //Debug.DrawRay(car.transform.position, car.wheels[0].transform.forward, Color.magenta);
             yield return null;
         }
         tireGripFactor = prevGripFactor;

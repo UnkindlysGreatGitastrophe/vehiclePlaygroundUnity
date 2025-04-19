@@ -31,7 +31,7 @@ public class NitroObj : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        
+        car = transform.parent.GetComponent<CarObj>();
     }
 
     // Update is called once per frame
