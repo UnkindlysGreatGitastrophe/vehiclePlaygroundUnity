@@ -1,5 +1,6 @@
 using Baracuda.Monitoring;
 using UnityEngine;
+using UnityEngine.Animations;
 
 public class EngineObj : MonoBehaviour
 {   
@@ -56,7 +57,15 @@ public class EngineObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
-        car = transform.parent.GetComponent<CarObj>();
+        if (transform.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.GetComponent<CarObj>();
+        }
+        if (transform.parent.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.parent.GetComponent<CarObj>();
+        }
+        
         RPM_2_AV = 1.0f/AV_2_RPM;
     }
 

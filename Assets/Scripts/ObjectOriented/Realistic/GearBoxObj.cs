@@ -40,7 +40,14 @@ public class GearBoxObj : MonoBehaviour
 
         // DEBUGGING
         this.StartMonitoring();
-        car = transform.parent.GetComponent<CarObj>();
+        if (transform.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.GetComponent<CarObj>();
+        }
+        if (transform.parent.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.parent.GetComponent<CarObj>();
+        }
         // VARIABLE INITIALIZING
         numOfGears = gearRatios.Length; // Dynamically assign numOfGears based on gearRatios array
         // REFERENCING

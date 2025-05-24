@@ -38,6 +38,9 @@ public class UIScript : MonoBehaviour
 
     [Header("Boost Indicator")]
     public Image healthFillImage;
+    public float healthMaxFillUIOffset = 0.428f;
+    public float healthMinFillUIOffset = 0.33f;
+
 
 
     [Header("Stunt UI")]
@@ -150,7 +153,8 @@ public class UIScript : MonoBehaviour
 
     void updateHealthGauge()
     {
-        healthFillImage.fillAmount = (car.currentCarHealth) / car.CarHealth;
+        float healthRatio = (car.currentCarHealth) / car.CarHealth;
+        healthFillImage.fillAmount = Remap(healthRatio, 0, 1, healthMinFillUIOffset, healthMaxFillUIOffset);
         
     }
 
@@ -208,5 +212,12 @@ public class UIScript : MonoBehaviour
         stuntUIAnimation.enabled = false;
 
         
+    }
+
+    public static float Remap (float input, float rangeMin, float rangeEnd, float newRangeMin,  float newRangeEnd)
+    {
+        float t = Mathf.InverseLerp(rangeMin, rangeEnd, input);
+        float output = Mathf.Lerp(newRangeMin, newRangeEnd, t);
+        return output;
     }
 }

@@ -88,7 +88,14 @@ public class WheelObj : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
-        car = transform.parent.parent.parent.GetComponent<CarObj>();
+        if (transform.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.GetComponent<CarObj>();
+        }
+        if (transform.parent.parent.GetComponent<CarObj>() != null)
+        {
+            car = transform.parent.parent.GetComponent<CarObj>();
+        }
         carRigidBody = car.GetComponent<Rigidbody>();
         wheels = transform.GetChild(0).gameObject;
         maxHitDistance = suspensionRestLength + tireRadius;

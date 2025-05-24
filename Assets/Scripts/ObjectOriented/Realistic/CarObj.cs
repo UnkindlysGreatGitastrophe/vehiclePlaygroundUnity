@@ -40,6 +40,8 @@ public class CarObj : MonoBehaviour
     public NitroObj nitroSystem;
     public StuntObj stuntManager;
 
+    public MeshesDeformation meshDeform;
+
     private Transform LookPoint;
     private Transform MovePoint;
 
@@ -205,6 +207,7 @@ public class CarObj : MonoBehaviour
 
         // REFERENCING
         rb = GetComponent<Rigidbody>(); // Get the RigidBody Component of car
+        meshDeform = GetComponent<MeshesDeformation>();
         differential = transform.GetComponentsInChildren<DifferentialObj>(); // Get Differential
         LookPoint = transform.Find("LookPoint").GetComponent<Transform>();
         MovePoint = transform.Find("MovePoint").GetComponent<Transform>();
@@ -944,8 +947,9 @@ public class CarObj : MonoBehaviour
                 Debug.Log("Kaboom!");
                 currentCarHealth = 0;
                 StartCoroutine(RecoverFromStall());
-                rb.AddExplosionForce(35000, rb.position ,10,300f,ForceMode.Impulse);
-                rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * 3500,ForceMode.Impulse);
+                rb.AddExplosionForce(Random.Range(30000, 40000), rb.position, 10, 300f, ForceMode.Impulse);
+                rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * Random.Range(2500, 5500), ForceMode.Impulse);
+                meshDeform.overBoostDetachment();
             } 
             yield return new WaitForSeconds(1);
 
@@ -988,7 +992,7 @@ public class CarObj : MonoBehaviour
 
         //float test = Vector3.Dot(impactVelocity,collision.contacts[0].normal);
         float dotMultiplier = Vector3.Dot(transform.up,collision.contacts[0].normal);
-        Debug.Log(dotMultiplier);
+        //Debug.Log(dotMultiplier);
         if (dotMultiplier > 0.75f)
         {
             dotMultiplier = 1;
