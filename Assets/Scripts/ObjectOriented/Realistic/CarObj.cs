@@ -11,10 +11,10 @@ using System.Threading;
 
 public class CarObj : MonoBehaviour
 {
-    public enum SteeringLock {OFF, RIGHT, LEFT};
-    public enum DriveType {FWD, RWD, AWD};
-    public enum StuntType {FRONTFLIP, BACKFLIP, TABLETOP, BARRELROLL, SPIN360};
-    public enum CarStatus {RUNNING, STALLED};
+    public enum SteeringLock { OFF, RIGHT, LEFT };
+    public enum DriveType { FWD, RWD, AWD };
+    public enum StuntType { FRONTFLIP, BACKFLIP, TABLETOP, BARRELROLL, SPIN360 };
+    public enum CarStatus { RUNNING, STALLED };
     internal Dictionary<StuntType, float> stuntScore = new Dictionary<StuntType, float>
     {
         {StuntType.FRONTFLIP, 0.1f },
@@ -24,8 +24,8 @@ public class CarObj : MonoBehaviour
         {StuntType.SPIN360, 0.18f}
     };
 
-    public float[] repeatStuntPenalty = {1f, 0.85f, 0.6f};
-    
+    public float[] repeatStuntPenalty = { 1f, 0.85f, 0.6f };
+
 
     [Header("References")]
     public EngineObj engine;
@@ -53,7 +53,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("Directs the distribution of brake force to the front and back of the wheels, 1 = front brakes only, 0 = rear brakes only")]
     public float frontBrakeBias; // Where the brake torque is directed when using regular brakes, 1 = front bias, 0 = rear bias
     public float eBrakeSpin = 0.5f;
-    
+
     [Header("Driving Assists")]
 
     [Tooltip("Toggles Anti-Lock Brakes, efficient braking with minimal lockup")]
@@ -164,7 +164,7 @@ public class CarObj : MonoBehaviour
     [Header("Output")]
     [Tooltip("Clutch Torque that holds the clutch plates together, and keep them spinning at the same rate as much as possible")]
     public float Tc = 0; // Clutch Torque, produced from balancing the engine speed and the transmission speed together, if the speeds are too much, then the clutch is disconnected, and the Clutch Torque is 0
-    [Tooltip("Torque produced from a forced induction system")] 
+    [Tooltip("Torque produced from a forced induction system")]
     public float inductionTorque;
     [Tooltip("Torque produced from the Gearbox ratio and final drive gear that gets sent to each axle")]
     public float torqueToAxle; // Torque produced from the Gearbox after supplying it with the Torque CLutch
@@ -195,8 +195,15 @@ public class CarObj : MonoBehaviour
     private bool canRegen;
     public CarStatus status = CarStatus.RUNNING;
     private Coroutine regenCo;
-    
 
+    [Header("Misc")]
+    [SerializeField]
+    private float dirtOverlay = 1;
+    [SerializeField]
+    private float dirtBuildupRate;
+    [SerializeField]
+    private float velocityThreshold;
+    private Material dirtmaterial;
 
 
     #region Start
@@ -217,11 +224,14 @@ public class CarObj : MonoBehaviour
         frontBrakeBias = Mathf.Clamp(frontBrakeBias, 0, 1); // Make sure it is within the correct boundaries
         torqueDistribution = Mathf.Clamp(torqueDistribution, 0, 1); // Make sure it is within the correct boundaries
         torqueRatio[0] = torqueDistribution; // Distribute power to rear wheels
-        torqueRatio[1] = 1-torqueDistribution; // Then the remainder to the front wheels
+        torqueRatio[1] = 1 - torqueDistribution; // Then the remainder to the front wheels
         angularDragAir = angularDrag * 3f;
+
+        dirtmaterial = meshDeform.getMeshMaterial().sharedMaterial;
+        dirtmaterial.SetFloat("_DirtVisibility", dirtOverlay);
         InitializePoweredWheels();
 
-        
+
     }
 
 
@@ -257,7 +267,8 @@ public class CarObj : MonoBehaviour
             torqueRatio[0] = 1; // Update Torque Ratio accordingly
             torqueRatio[1] = 0;
         }
-        else { // Make only Front wheels powered (FWD)
+        else
+        { // Make only Front wheels powered (FWD)
             int idx = 0;
             poweredWheels = new WheelObj[2];
             for (int w = 0; w < wheels.Length; w++)
@@ -275,22 +286,22 @@ public class CarObj : MonoBehaviour
     #endregion
 
     #region Update
-    
+
     void OnDrawGizmos() // Used to debug center of gravity
     {
         if (rb != null)
         {
-        Gizmos.color = Color.magenta;
-        Gizmos.DrawSphere(transform.position + transform.rotation * rb.centerOfMass,1f);
+            Gizmos.color = Color.magenta;
+            Gizmos.DrawSphere(transform.position + transform.rotation * rb.centerOfMass, 1f);
         }
     }
-    
+
 
     void FixedUpdate()
     {
         // Handle Input Here:
-        GetInput(); 
-        
+        GetInput();
+
         GetDownForce();
         // Car Operation begins here:
         if (status == CarStatus.RUNNING)
@@ -305,7 +316,7 @@ public class CarObj : MonoBehaviour
                 inductionTorque = induction.convertPSItoTorque();
                 engine.torque_out += inductionTorque;
             }
-            if(gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
+            if (gearBox.get_ratio() != 0.0f && gearBox.gearEngaged) // If not in Neutral or shifting
                 Tc = clutch.calculateClutch(); // Function for calculating clutch Torque (TC)
             else
             {
@@ -313,28 +324,28 @@ public class CarObj : MonoBehaviour
                 engine.clutch_torque = 0;
                 clutch.clutchLock = 0;
             }
-                
+
             for (int i = 0; i < differential.Length; i++) // Iterate on each wheel axle that is powered by the engine
             {
                 torqueToAxle = (Tc * gearBox.get_ratio() * gearBox.finalDriveGear) * torqueRatio[i]; // Calculate Potential Torque to each wheel
                 differential[i].calculateDifferential(); // Each powered axle has a differential, we calculate how we spread the torque in accordance to the differential type here.
-                //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
+                                                         //Debug.Log(poweredWheels[i].wheelAngularVelocity - poweredWheels[i+1].wheelAngularVelocity); // Debug
+            }
         }
-        }
-        
+
         for (int i = 0; i < wheels.Length; i++) // Iterate on all whels
         {
             wheels[i].brakeTorque = -Mathf.Sign(wheels[i].wheelAngularVelocity) * wheels[i].calculateBrakeTorque(BrakeInput, wheels[i].brakeBias, maxBrakeTorque); // Get the brake torque here
             if (!poweredWheels.Contains(wheels[i])) // If the wheel is not powered at all, apply no drive torque here.
                 wheels[i].applyTorqueToWheels(0);
-			wheels[i].calculateLongitudinalForce(); // Function for calculating longitudinal force based on Slip Ratio
+            wheels[i].calculateLongitudinalForce(); // Function for calculating longitudinal force based on Slip Ratio
             wheels[i].calculateLateralForce(); // Function for calculating lateral force based on Slip Angle
             wheels[i].applyWheelForces(); // Function for applying a combination of Lateral and longitudinal force
         }
         float dragCoefficient = 0.353f; // might be a bit too much
         Vector3 dragForce = transform.TransformDirection(dragCoefficient * -currentVelocity * currentVelocity.magnitude);
-        rb.AddForceAtPosition( 
-            dragForce 
+        rb.AddForceAtPosition(
+            dragForce
             , transform.position);
 
         if (status == CarStatus.RUNNING)
@@ -354,17 +365,18 @@ public class CarObj : MonoBehaviour
                 AerialRotation();
                 TrackStunts();
                 rb.angularDrag = angularDragAir;
-                if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
+                if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(rb.velocity.magnitude) <= 1)
+                { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
                     PIDengaged = true;
                 }
-                
+
             }
             else
-            {   
+            {
                 if (!PIDengaged)
                 {
-                    for (int i = 0;i<wheels.Length;i++)
-                    {   
+                    for (int i = 0; i < wheels.Length; i++)
+                    {
                         float previousGrip = wheels[i].tireGripFactor;
                         wheels[i].tireGripFactor = 0;
                         StartCoroutine(wheels[i].disengageGrip(previousGrip));
@@ -379,16 +391,16 @@ public class CarObj : MonoBehaviour
 
             }
         }
-        
+
         lastVelocity = currentVelocity;
         currentVelocity = transform.InverseTransformDirection(rb.velocity);
         carSpeed = currentVelocity.z * 3.6f; // Measured in KM/H
         getGForces();
         updateLookPoint();
-        float h = Input.GetAxis("Horizontal") * Mathf.Clamp(carSpeed/5, 0, eBrakeSpin) * eBrakeInput * Time.deltaTime;
+        float h = Input.GetAxis("Horizontal") * Mathf.Clamp(carSpeed / 5, 0, eBrakeSpin) * eBrakeInput * Time.deltaTime;
         rb.AddTorque(rb.transform.up * h, ForceMode.VelocityChange);
-        
-        
+
+
 
 
     }
@@ -404,7 +416,7 @@ public class CarObj : MonoBehaviour
     }
 
     void getGForces()
-    {   
+    {
         Vector3 currentSpeed = transform.InverseTransformDirection(rb.velocity);
         Gforces.x = ((currentSpeed.x - lastVelocity.x) / Time.fixedDeltaTime) / Physics.gravity.y;
         Gforces.y = ((currentSpeed.y - lastVelocity.y) / Time.fixedDeltaTime) / Physics.gravity.y;
@@ -419,8 +431,8 @@ public class CarObj : MonoBehaviour
     #endregion
 
     #region Input Handling
-    public void GetInput() 
-    {       
+    public void GetInput()
+    {
         // DEBUGGING
 
         if (Input.GetKey(KeyCode.Z))
@@ -445,18 +457,18 @@ public class CarObj : MonoBehaviour
             Throttle = 1;
         }
 
-        switch(steeringLock) 
+        switch (steeringLock)
         {
-        case SteeringLock.LEFT:
-            steeringInput = -1;
-            break;
-        case SteeringLock.RIGHT:
-            steeringInput = 1;
-            break;
-        default:
-            steeringInput = Input.GetAxis("Horizontal");
-            GetSpeedBasedSteerAngle();
-            break;
+            case SteeringLock.LEFT:
+                steeringInput = -1;
+                break;
+            case SteeringLock.RIGHT:
+                steeringInput = 1;
+                break;
+            default:
+                steeringInput = Input.GetAxis("Horizontal");
+                GetSpeedBasedSteerAngle();
+                break;
         }
 
         // END DEBUGGING CODE
@@ -510,89 +522,8 @@ public class CarObj : MonoBehaviour
         if (!ThrottleLock) // If Throttle is not locked, then operate the input normally
         {
             if (gearBox.Transmissiontype == GearBoxObj.GearboxType.MANUAL) // Manual Transmissions operate as normal
-        {
-            if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-            {
-                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                {
-                    PIDengaged = false;
-                    PIDstrength = 0;
-                }
-            }
-            if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-            {
-                Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                {
-                    PIDengaged = false;
-                    PIDstrength = 0;
-                }
-            }
-            else if (gearBox.gearEngaged == true)
-            {
-                Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
-            }
-
-            if (Input.GetAxisRaw("Vertical") == -1) // Brakes, operate independently of gearbox
-            {
-                BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
-                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                {
-                    PIDengaged = false;
-                    PIDstrength = 0;
-
-                }
-            }
-            else
-            {
-                BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
-            }
-        }
-        if (gearBox.Transmissiontype == GearBoxObj.GearboxType.AUTOMATIC) // Automatic transmission handles extra cases, brake and throttle inverts when driver wants to reverse.
-        {
-            if (!AutoReverseMode)
             {
                 if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-            {
-                if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                {
-                    PIDengaged = false;
-                    PIDstrength = 0;
-                }
-            }
-                if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Operate as normal if we aren't in reverse mode for automatics
-                {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-
-                    }
-                }
-                else if (gearBox.gearEngaged == true)
-                {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
-                }
-
-                if (Input.GetAxisRaw("Vertical") == -1)
-                {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);   // Otherwise, swap the controls so that gas is brakes
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-
-                    }   
-                }
-                else
-                {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
-                }
-            }
-            else
-            {
-            if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
                 {
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
@@ -600,52 +531,134 @@ public class CarObj : MonoBehaviour
                         PIDstrength = 0;
                     }
                 }
-                if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
-                {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 1, 8*Time.deltaTime);
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-
-                    }  
-                }
-                else if (gearBox.gearEngaged == true)
-                {
-                    BrakeInput = Mathf.Lerp(BrakeInput, 0, 16*Time.deltaTime);
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-                    }  
-                }
-
-                if (Input.GetAxisRaw("Vertical") == -1)
+                if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
                     if (isCarMidAir() && Input.GetKey(KeyCode.Space))
                     {
                         PIDengaged = false;
                         PIDstrength = 0;
-
-                    }  
+                    }
                 }
-                else
+                else if (gearBox.gearEngaged == true)
                 {
                     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
                 }
 
+                if (Input.GetAxisRaw("Vertical") == -1) // Brakes, operate independently of gearbox
+                {
+                    BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);
+                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                    {
+                        PIDengaged = false;
+                        PIDstrength = 0;
+
+                    }
+                }
+                else
+                {
+                    BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
+                }
             }
-            
-        }
+            if (gearBox.Transmissiontype == GearBoxObj.GearboxType.AUTOMATIC) // Automatic transmission handles extra cases, brake and throttle inverts when driver wants to reverse.
+            {
+                if (!AutoReverseMode)
+                {
+                    if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
+                    {
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+                        }
+                    }
+                    if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Operate as normal if we aren't in reverse mode for automatics
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+
+                        }
+                    }
+                    else if (gearBox.gearEngaged == true)
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                    }
+
+                    if (Input.GetAxisRaw("Vertical") == -1)
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);   // Otherwise, swap the controls so that gas is brakes
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+
+                        }
+                    }
+                    else
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
+                    }
+                }
+                else
+                {
+                    if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
+                    {
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+                        }
+                    }
+                    if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+
+                        }
+                    }
+                    else if (gearBox.gearEngaged == true)
+                    {
+                        BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+                        }
+                    }
+
+                    if (Input.GetAxisRaw("Vertical") == -1)
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
+                        {
+                            PIDengaged = false;
+                            PIDstrength = 0;
+
+                        }
+                    }
+                    else
+                    {
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                    }
+
+                }
+
+            }
         }
 
-            
+
     }
 
     void GetSpeedBasedSteerAngle() // Limits steering angle in accordance with the amount of speed the car has achieved
     {
-        clampedSteeringAngle = Mathf.Clamp(maxSteeringAngle *  (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)),minSteeringAngle,maxSteeringAngle); // Clamp the steering angle with the minimum and maximmum, rate of k determines how quick the angle is limited
+        //clampedSteeringAngle = Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle); // Clamp the steering angle with the minimum and maximmum, rate of k determines how quick the angle is limited
+        clampedSteeringAngle = Mathf.MoveTowards(clampedSteeringAngle, Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle), 1 * Time.deltaTime);
         avgBackSlipAngle = 0; // Also consider the slip angle of the rear tires, if a spinout is to occur, we should increase steering angle to accomodate
         for (int i = 2; i < wheels.Length; i++) // Take the average slip angle here
         {
@@ -653,7 +666,7 @@ public class CarObj : MonoBehaviour
         }
         if (Mathf.Abs(avgBackSlipAngle) > clampedSteeringAngle + 5) // If the average slip angle far exceeds the max steering angle, we clamp it again
         {
-            clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle),minSteeringAngle,maxSteeringAngle);
+            clampedSteeringAngle = Mathf.Clamp(Mathf.Abs(avgBackSlipAngle), minSteeringAngle, maxSteeringAngle);
         }
     }
 
@@ -684,9 +697,22 @@ public class CarObj : MonoBehaviour
         }
         return true;
     }
+
+    public bool isCarPartiallyMidAir()
+    // Check to see if all 4 tires are off the ground
+    {
+        for (int w = 0; w < wheels.Length; w++)
+        {
+            if (wheels[w].isHit == false)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
     void GetDownForce() // Calculate downforce to be applied evenly for all 4 wheels
     {
-        downForce = Mathf.Min(maxAero,0.5f*airDensity * Mathf.Pow(Mathf.Abs(carSpeed),2)*aeroRate);
+        downForce = Mathf.Min(maxAero, 0.5f * airDensity * Mathf.Pow(Mathf.Abs(carSpeed), 2) * aeroRate);
         //rb.AddForceAtPosition(Vector3.down*downForce, rb.centerOfMass);
     }
 
@@ -700,14 +726,14 @@ public class CarObj : MonoBehaviour
         if (Input.GetKey(KeyCode.Space))
         {
             if (Input.GetKey(KeyCode.Space))
-            rb.AddTorque(rb.transform.right * v, ForceMode.VelocityChange);
+                rb.AddTorque(rb.transform.right * v, ForceMode.VelocityChange);
 
             if (allowBarrelRoll) // If barrel rolls are allowed, flat spins are replaced with barrel rolls instead
             {
                 rb.AddRelativeTorque(0f, 0f, h, ForceMode.VelocityChange);
             }
         }
-        
+
         else
         {
             if (!PIDengaged)
@@ -716,7 +742,7 @@ public class CarObj : MonoBehaviour
             }
             else
             {
-                rb.AddTorque(rb.transform.up * h/4, ForceMode.VelocityChange);
+                rb.AddTorque(rb.transform.up * h / 4, ForceMode.VelocityChange);
             }
         }
         //Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
@@ -737,7 +763,7 @@ public class CarObj : MonoBehaviour
 
         // Increase stunt count for when a full revolution is complete.
 
-        if (totalRotation.x < -270f) 
+        if (totalRotation.x < -270f)
         {
             totalRotation.x = 0;
             numFrontFlips++;
@@ -794,12 +820,12 @@ public class CarObj : MonoBehaviour
         }
 
         float totalScore = 0f;
-        Dictionary<StuntType, int> recordedStunts = new Dictionary<StuntType,int>();
+        Dictionary<StuntType, int> recordedStunts = new Dictionary<StuntType, int>();
         for (int i = 0; i < stuntsInStreak.Count; i++)
         {
             if (!recordedStunts.ContainsKey(stuntsInStreak[i]))
             {
-                recordedStunts.Add(stuntsInStreak[i],1);
+                recordedStunts.Add(stuntsInStreak[i], 1);
             }
             else
             {
@@ -807,16 +833,16 @@ public class CarObj : MonoBehaviour
             }
         }
 
-        foreach(KeyValuePair<StuntType, int> entry in recordedStunts)
+        foreach (KeyValuePair<StuntType, int> entry in recordedStunts)
+        {
+            float baseStuntScore = 0;
+            for (int i = 0; i < entry.Value; i++)
             {
-                float baseStuntScore = 0;
-                for (int i = 0; i < entry.Value; i++)
-                {
-                    baseStuntScore += stuntScore[entry.Key] * repeatStuntPenalty[Mathf.Min(i,2)];
-                }
-                totalScore += baseStuntScore;
-                // do something with entry.Value or entry.Key
+                baseStuntScore += stuntScore[entry.Key] * repeatStuntPenalty[Mathf.Min(i, 2)];
             }
+            totalScore += baseStuntScore;
+            // do something with entry.Value or entry.Key
+        }
         if (ui != null)
         {
             if (!stuntProcessing)
@@ -825,21 +851,22 @@ public class CarObj : MonoBehaviour
                 stuntProcessing = true;
             }
             //ui.showcaseStuntText(recordedStunts, totalScore);
-            
+
         }
-        
+
         return totalScore;
     }
 
     void PID() // Function for being able to stabilize the car when in mid air, and front the car from rolling after a jump. Also can flip an upside down car if near stationary
     {
-        
-        if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(carSpeed) <= 5f) { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
-        float h = Input.GetAxis("Horizontal");
-        rb.AddRelativeTorque(0f, 0f, h*30, ForceMode.Acceleration);
+
+        if (Mathf.Abs(rb.transform.localRotation.eulerAngles.z) > 60f && Mathf.Abs(carSpeed) <= 5f)
+        { // If the car is upside down and nearly going at 0 km/h, then we allow the player to flip the car.
+            float h = Input.GetAxis("Horizontal");
+            rb.AddRelativeTorque(0f, 0f, h * 30, ForceMode.Acceleration);
         }
 
-        bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast, predicts where the car will land approximately.
+        bool isHit = Physics.Raycast(rb.position, new Vector3(rb.velocity.x, Physics.gravity.y, rb.velocity.z), out RaycastDir); // Raycast, predicts where the car will land approximately.
 
         // Debug.DrawRay(rb.position, new Vector3(rb.velocity.x,Physics.gravity.y, rb.velocity.z), Color.cyan);
 
@@ -851,7 +878,7 @@ public class CarObj : MonoBehaviour
             Debug.DrawRay(rb.position, rb.transform.up, Color.magenta);
 
 
-            
+
 
             Vector3 targetValueUP = RaycastDir.normal; // Get the normal vector of the ground, this will be our target value we want the car's rotation to match.
             //Vector3 error = targetValue - rb.transform.up;
@@ -864,14 +891,14 @@ public class CarObj : MonoBehaviour
 
 
             Vector3 D = derivativeGain * errorRateOfChange; // This value is responsible for preventing an overshoot of the target.
-            
 
-                        // Calculate I term
+
+            // Calculate I term
             integrationStored = integrationStored + (error * Time.fixedDeltaTime); // This is responsible for trying to make the rotation of the car align with the target as much as possible
-            Vector3 I =  integrationStored * integralGain;
+            Vector3 I = integrationStored * integralGain;
 
 
-            rb.AddTorque(PIDstrength * P+D+I, ForceMode.Impulse); // Combine and add all forces as torques
+            rb.AddTorque(PIDstrength * P + D + I, ForceMode.Impulse); // Combine and add all forces as torques
         }
 
 
@@ -899,15 +926,15 @@ public class CarObj : MonoBehaviour
                     stuntsInStreak.Clear();
                     yield break;
                 }
-                    
+
             }
             else
             {
                 time = 0;
             }
         }
-        
-        
+
+
     }
 
     #endregion
@@ -917,9 +944,9 @@ public class CarObj : MonoBehaviour
     public void activateNitro()
     {
         if (nitroSystem.nitroOn)
-        {     
+        {
             applyNitro();
-            nitroSystem.nitroDelayInit = true;            
+            nitroSystem.nitroDelayInit = true;
             nitroSystem.nitroValue = Mathf.Clamp(nitroSystem.nitroValue + Time.deltaTime * nitroSystem.nitroHeatRate, 0, 1);
             if (nitroSystem.nitroValue == 1 && !nitroSystem.isOverBoosting)
             {
@@ -928,12 +955,12 @@ public class CarObj : MonoBehaviour
                 StartCoroutine(overBoostCountDown());
             }
         }
-        
+
     }
 
     public void applyNitro()
     {
-        rb.AddForce(transform.forward * nitroSystem.kineticBoost * (nitroSystem.kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)) * (Mathf.Max(1,nitroSystem.boostStuntMultiplier/2)));
+        rb.AddForce(transform.forward * nitroSystem.kineticBoost * (nitroSystem.kineticBoostMultiplier * (isCarMidAir() ? 1 : 0)) * (Mathf.Max(1, nitroSystem.boostStuntMultiplier / 2)));
         engine.nitroTorque = engine.initialTorque * nitroSystem.nitrousPower * nitroSystem.boostStuntMultiplier;
     }
 
@@ -950,25 +977,25 @@ public class CarObj : MonoBehaviour
                 rb.AddExplosionForce(Random.Range(30000, 40000), rb.position, 10, 300f, ForceMode.Impulse);
                 rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * Random.Range(2500, 5500), ForceMode.Impulse);
                 meshDeform.overBoostDetachment();
-            } 
+            }
             yield return new WaitForSeconds(1);
 
         }
-        
+
     }
 
-     private IEnumerator NitroReactivation()
+    private IEnumerator NitroReactivation()
     {
         while (nitroSystem.nitroOn)
         {
             yield return new WaitForSeconds(1);
-            
+
             Debug.Log("Still Boosting...");
-            
+
         }
         nitroSystem.nitroOverBoostValue = 0;
-        nitroSystem.nitroDelay = Mathf.Clamp(nitroSystem.nitroDelay - 1 * Time.deltaTime , 0, 1);
-        
+        nitroSystem.nitroDelay = Mathf.Clamp(nitroSystem.nitroDelay - 1 * Time.deltaTime, 0, 1);
+
     }
     #endregion
 
@@ -978,7 +1005,7 @@ public class CarObj : MonoBehaviour
     {
         while (currentCarHealth < CarHealth && canRegen)
         {
-            currentCarHealth = currentCarHealth + 3*Time.deltaTime;
+            currentCarHealth = currentCarHealth + 3 * Time.deltaTime;
             currentCarHealth = Mathf.Clamp(currentCarHealth, 0, CarHealth);
             yield return null;
         }
@@ -986,40 +1013,40 @@ public class CarObj : MonoBehaviour
 
     void OnCollisionEnter(Collision collision)
     {
-        if( regenCo != null ) StopCoroutine( regenCo );
+        if (regenCo != null) StopCoroutine(regenCo);
 
         Vector3 impactVelocity = collision.relativeVelocity;
 
         //float test = Vector3.Dot(impactVelocity,collision.contacts[0].normal);
-        float dotMultiplier = Vector3.Dot(transform.up,collision.contacts[0].normal);
+        float dotMultiplier = Vector3.Dot(transform.up, collision.contacts[0].normal);
         //Debug.Log(dotMultiplier);
         if (dotMultiplier > 0.75f)
         {
             dotMultiplier = 1;
         }
 
-    // Subtracting a minimum threshold can avoid tiny scratches at negligible speeds.
+        // Subtracting a minimum threshold can avoid tiny scratches at negligible speeds.
         float magnitude = Mathf.Max(0f, impactVelocity.magnitude - 5);
         // Using sqrMagnitude can feel good here,
         // making light taps less damaging and high-speed strikes devastating.
 
-        float damage =  magnitude * (1 - Mathf.Max(dotMultiplier,0)) * 1;
+        float damage = magnitude * (1 - Mathf.Max(dotMultiplier, 0)) * 1;
 
         if (currentCarHealth <= 0 && status == CarStatus.RUNNING)
         {
-            
+
             StartCoroutine(RecoverFromStall());
         }
 
         //if (collision.contacts[0].thisCollider.name != "BottomOfCar")
         //{
-            currentCarHealth = Mathf.Max(0,currentCarHealth - Mathf.Abs(damage));
+        currentCarHealth = Mathf.Max(0, currentCarHealth - Mathf.Abs(damage));
         //}
-        
+
         canRegen = false;
 
         regenCo = StartCoroutine(reactiveRegen());
-    
+
     }
 
     private IEnumerator RecoverFromStall()
@@ -1039,7 +1066,7 @@ public class CarObj : MonoBehaviour
         {
             currentCarHealth = 10f;
         }
-            
+
     }
 
     private IEnumerator reactiveRegen()
@@ -1053,6 +1080,22 @@ public class CarObj : MonoBehaviour
         }
         canRegen = true;
         StartCoroutine(regenHealth());
+    }
+
+    #endregion
+
+    #region 
+
+    public void buildUpDirt()
+    {
+        dirtOverlay = Mathf.Clamp(dirtOverlay + Mathf.Clamp(carSpeed / velocityThreshold, 0, 1) * -dirtBuildupRate * Time.deltaTime, 0, 1);
+        dirtmaterial.SetFloat("_DirtVisibility", dirtOverlay);
+    }
+
+    public void removeDirt()
+    {
+        dirtOverlay = Mathf.Clamp(dirtOverlay + Mathf.Clamp(carSpeed / velocityThreshold, 0, 1) * +dirtBuildupRate * Time.deltaTime, 0, 1);
+        dirtmaterial.SetFloat("_DirtVisibility", dirtOverlay);
     }
 
     #endregion

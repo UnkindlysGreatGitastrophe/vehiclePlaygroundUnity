@@ -17,7 +17,7 @@ public class MeshesDeformation : MonoBehaviour
     private float minVertsDistanceToRestore = 0.002f;
     private float vertsRestoreSpeed = 2f;
     private Vector3[][] originalVertices;
-    private float nextTimeDeform = 0f;   
+    private float nextTimeDeform = 0f;
     private bool isRepairing = false;
     private bool isRepaired = false;
     public float maxHealth = 50f;
@@ -70,14 +70,14 @@ public class MeshesDeformation : MonoBehaviour
     private void DeformationMesh(Mesh mesh, Transform localTransform, Vector3 contactPoint, Vector3 contactVelocity, Vector3 contactNormal, int i)
     {
         bool hasDeformated = false;
-        
+
         Vector3 localContactPoint = localTransform.InverseTransformPoint(contactPoint);
         Vector3 localContactForce = localTransform.InverseTransformDirection(contactVelocity);
         Vector3[] vertices = mesh.vertices;
 
         for (int j = 0; j < vertices.Length; j++)
         {
-             float distance = (localContactPoint - vertices[j]).magnitude;
+            float distance = (localContactPoint - vertices[j]).magnitude;
 
             if (distance <= deformationRadius)
             {
@@ -132,12 +132,12 @@ public class MeshesDeformation : MonoBehaviour
         float damage = magnitude * (1 - Mathf.Max(dotMultiplier, 0)) * 1;
         //float damage = magnitude ;
         detachHealth[i] = detachHealth[i] - damage;
-        if (detachHealth[i] < 0.66f*maxHealth)
+        if (detachHealth[i] < 0.66f * maxHealth)
         {
             Destroy(deformableObjectsList[i].GetComponent<FixedJoint>());
-            
+
         }
-        if (detachHealth[i] < 0.33f*maxHealth)
+        if (detachHealth[i] < 0.33f * maxHealth)
         {
             if (deformableObjectsList[i].GetComponent<HingeJoint>())
             {
@@ -146,7 +146,7 @@ public class MeshesDeformation : MonoBehaviour
             }
 
 
-            }
+        }
         if (detachHealth[i] < 0)
         {
             Destroy(deformableObjectsList[i].GetComponent<HingeJoint>());
@@ -189,17 +189,17 @@ public class MeshesDeformation : MonoBehaviour
 
             for (int j = 0; j < fixedJoints.Length; j++)
             {
-                fixedJoints[j].breakForce = Random.Range(5000,10000);
+                fixedJoints[j].breakForce = Random.Range(5000, 10000);
                 fixedJoints[j].breakTorque = fixedJoints[j].breakForce * 1.1f;
             }
             for (int j = 0; j < hingeJoints.Length; j++)
             {
-                hingeJoints[j].breakForce = Random.Range(5000,10000);;
+                hingeJoints[j].breakForce = Random.Range(5000, 10000); ;
                 hingeJoints[j].breakTorque = hingeJoints[j].breakForce * 1.1f;
             }
         }
     }
-    
+
 
     private void RestoreMesh()
     {
@@ -246,5 +246,10 @@ public class MeshesDeformation : MonoBehaviour
                 }
             }
         }
+    }
+
+    public Renderer getMeshMaterial()
+    {
+        return deformableObjectsList[0].GetComponent<Renderer>();
     }
 }
