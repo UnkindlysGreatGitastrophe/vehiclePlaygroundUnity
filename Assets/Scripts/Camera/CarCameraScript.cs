@@ -4,7 +4,8 @@ using UnityEngine;
 
 public class CarCameraScript : MonoBehaviour
 {
-    public CinemachineVirtualCamera vcam;
+    public CinemachineVirtualCamera groundVCam; public CinemachineVirtualCamera airVCam;
+    private CinemachineBrain cinemachineBrain;
     public float minAmpGain = 0, maxAmpGain = 0.2f;
     public float minFreqGain = 0.01f, maxFreqGain = 0.07f;
     public float minSpeedAmp = 75f, maxSpeedAmp = 300;
@@ -18,7 +19,7 @@ public class CarCameraScript : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-
+        cinemachineBrain = this.GetComponent<CinemachineBrain>();
     }
 
     // Update is called once per frame
@@ -30,19 +31,24 @@ public class CarCameraScript : MonoBehaviour
 
     private void cameraBehaviour()
     {
-        var sameAsFollowTarget = vcam.GetCinemachineComponent<CinemachineTransposer>();
-        var noise = vcam.GetCinemachineComponent<CinemachineBasicMultiChannelPerlin>();
+        var sameAsFollowTarget = groundVCam.GetCinemachineComponent<CinemachineTransposer>();
+        var noise = groundVCam.GetCinemachineComponent<CinemachineBasicMultiChannelPerlin>();
         noise.m_AmplitudeGain = Mathf.Clamp((car.carSpeed - minSpeedAmp) / maxSpeedAmp * maxAmpGain, minAmpGain, maxAmpGain);
         noise.m_FrequencyGain = Mathf.Clamp((car.carSpeed - minSpeedFreq) / maxSpeedFreq * maxFreqGain, minFreqGain, maxFreqGain);
 
-        if (car.isCarPartiallyMidAir())
+        if (car.isCarMidAir())
         {
-            
-            StartCoroutine(TransitionToAirCam(sameAsFollowTarget));
+            groundVCam.enabled = false;
+            airVCam.enabled = true;
+            cinemachineBrain.m_DefaultBlend.m_Time = 0.1f;
+
         }
         else
         {
+            groundVCam.enabled = true;
+            airVCam.enabled = false;
             sameAsFollowTarget.m_BindingMode = groundcam;
+            cinemachineBrain.m_DefaultBlend.m_Time = 1f;
         }
 
         if (Input.GetKey(KeyCode.V))
@@ -64,5 +70,24 @@ public class CarCameraScript : MonoBehaviour
         yield return new WaitForSeconds(0.5f);
         if (car.isCarMidAir())
             sameAsFollowTarget.m_BindingMode = midaircam;
+    }
+    
+    void CopyCameraProperties(CinemachineVirtualCamera source, CinemachineVirtualCamera destination)
+    {
+        // Copy component values
+        destination.Priority = source.Priority;
+        destination.m_Lens = source.m_Lens;
+        destination.m_LookAt = source.m_LookAt;
+        destination.m_Follow = source.m_Follow;
+        destination.m_StandbyUpdate = source.m_StandbyUpdate;
+
+        // Copy component settings
+        destination.m_Lens.NearClipPlane = source.m_Lens.NearClipPlane;
+        destination.m_Lens.FarClipPlane = source.m_Lens.FarClipPlane;
+        destination.m_Lens.FieldOfView = source.m_Lens.FieldOfView;
+        destination.m_Lens.OrthographicSize = source.m_Lens.OrthographicSize;
+        destination.m_Lens.Orthographic = source.m_Lens.Orthographic;
+
+        // Copy other settings like target offset, etc. if needed
     }
 }
