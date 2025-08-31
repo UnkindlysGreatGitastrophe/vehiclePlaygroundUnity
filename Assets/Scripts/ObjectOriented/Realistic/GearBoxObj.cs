@@ -160,7 +160,7 @@ public class GearBoxObj : MonoBehaviour
         if (currentGear > 0 && gearEngaged) // Boundary check, check if gear is engaged
         {
         //Debug.Log(GetMaxGearSpeed(currentGear - 1));
-        StartCoroutine(ShiftRevMatch(currentGear - 1)); // Attempt to rev match the shift (Quicker than normal process, but may not always complete)
+        StartCoroutine(NormalShift(currentGear - 1)); // Attempt to rev match the shift (Quicker than normal process, but may not always complete)
         }
     }
 

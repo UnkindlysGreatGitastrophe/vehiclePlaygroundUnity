@@ -43,7 +43,6 @@ public class CarObj : MonoBehaviour
     public MeshesDeformation meshDeform;
 
     private Transform LookPoint;
-    private Transform MovePoint;
 
 
     [Header("Brake Input Parameters")]
@@ -64,10 +63,10 @@ public class CarObj : MonoBehaviour
     [Header("Input")]
 
     [Tooltip("The gas pedal!, 0 = no throttle, 1 = full throttle")]
-    public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
+    [Monitor] public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
 
     [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
-    public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
+    [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
     [Tooltip("The Spicy brake pedal, 0 = no handbrake, 1 = full handbrake")]
     public float eBrakeInput; // 0-1, 0 is no handbrake, 1 is full hand brake
     [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
@@ -89,10 +88,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("When true, the gas and brake input is inverted to allow smoother gameplay when using automatic transmissions (Does NOT apply to manuals)")]
     public bool AutoReverseMode = false; // Reverse mode that inverts input when activated (Automatic Gearbox only)
 
-    [Tooltip("DEBUG: Toggles full steering lock")]
-    public SteeringLock steeringLock; // Debugging
-    [Tooltip("DEBUG: Toggles auto acceleration, will break shifting by keeping throttle on")]
-    public bool ThrottleLock; // Auto accelerate
+
 
 
     [Header("DriveTrain Parameters")]
@@ -170,8 +166,8 @@ public class CarObj : MonoBehaviour
     public float torqueToAxle; // Torque produced from the Gearbox after supplying it with the Torque CLutch
     // Start is called before the first frame update
     [Tooltip("Measured in KM/H")]
-    [Monitor]
-    public float carSpeed = 0; // Measured in KM/H
+    //[Monitor]
+    [Monitor] public float carSpeed = 0; // Measured in KM/H
     [Tooltip("Average Slip Angle of rear wheels")]
     public float avgBackSlipAngle; // Average Back Slip Angles
     [Tooltip("Average Slip Ratio of rear wheels")]
@@ -190,7 +186,8 @@ public class CarObj : MonoBehaviour
     float healthRegenRate = 1.5f;
 
     float healthRegenDelay = 5f;
-    [Monitor] public float currentCarHealth = 100f;
+    //[Monitor]
+    public float currentCarHealth = 100f;
 
     private bool canRegen;
     public CarStatus status = CarStatus.RUNNING;
@@ -205,6 +202,14 @@ public class CarObj : MonoBehaviour
     private float velocityThreshold;
     private Material dirtmaterial;
 
+    [Header("Automation")]
+    public bool isAIPowered;
+
+    [Tooltip("DEBUG: Toggles full steering lock")]
+    public SteeringLock steeringLock; // Debugging
+    [Tooltip("DEBUG: Toggles auto acceleration, will break shifting by keeping throttle on")]
+    public bool ThrottleLock; // Auto accelerate
+
 
     #region Start
     void Start()
@@ -217,7 +222,6 @@ public class CarObj : MonoBehaviour
         meshDeform = GetComponent<MeshesDeformation>();
         differential = transform.GetComponentsInChildren<DifferentialObj>(); // Get Differential
         LookPoint = transform.Find("LookPoint").GetComponent<Transform>();
-        MovePoint = transform.Find("MovePoint").GetComponent<Transform>();
 
 
         // VARIABLE INITIALIZING
@@ -300,8 +304,10 @@ public class CarObj : MonoBehaviour
     void FixedUpdate()
     {
         // Handle Input Here:
-        GetInput();
-
+        if (!isAIPowered)
+            GetInput();
+        HandleThrottleLock();
+        GetSpeedBasedSteerAngle();
         GetDownForce();
         // Car Operation begins here:
         if (status == CarStatus.RUNNING)
@@ -448,14 +454,7 @@ public class CarObj : MonoBehaviour
             Time.timeScale = 0.1f;
         }
 
-        if (Input.GetKeyDown(KeyCode.T))
-        {
-            ThrottleLock = !ThrottleLock; // Note that throttle lock set to true brakes throttle when shifting
-        }
-        if (ThrottleLock)
-        {
-            Throttle = 1;
-        }
+
 
         switch (steeringLock)
         {
@@ -467,7 +466,6 @@ public class CarObj : MonoBehaviour
                 break;
             default:
                 steeringInput = Input.GetAxis("Horizontal");
-                GetSpeedBasedSteerAngle();
                 break;
         }
 
@@ -655,6 +653,18 @@ public class CarObj : MonoBehaviour
 
     }
 
+    void HandleThrottleLock()
+    {
+        if (Input.GetKeyDown(KeyCode.T))
+        {
+            ThrottleLock = !ThrottleLock; // Note that throttle lock set to true brakes throttle when shifting
+        }
+        if (ThrottleLock)
+        {
+            Throttle = 1;
+        }
+    }
+
     void GetSpeedBasedSteerAngle() // Limits steering angle in accordance with the amount of speed the car has achieved
     {
         //clampedSteeringAngle = Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle); // Clamp the steering angle with the minimum and maximmum, rate of k determines how quick the angle is limited
@@ -677,6 +687,26 @@ public class CarObj : MonoBehaviour
         for (int i = 0; i < wheels.Length; i++)
         {
             AVG += wheels[i].wheelAngularVelocity * engine.AV_2_RPM / wheels.Length;
+        }
+        return AVG;
+    }
+
+    public float GetAVGTireRadius() // Gets Average Wheel RPM of the car
+    {
+        float AVG = 0;
+        for (int i = 0; i < wheels.Length; i++)
+        {
+            AVG += wheels[i].tireRadius / wheels.Length;
+        }
+        return AVG;
+    }
+
+    public float GetAVGTireGrip() // Gets Average Wheel RPM of the car
+    {
+        float AVG = 0;
+        for (int i = 0; i < wheels.Length; i++)
+        {
+            AVG += wheels[i].tireGripFactor / wheels.Length;
         }
         return AVG;
     }
