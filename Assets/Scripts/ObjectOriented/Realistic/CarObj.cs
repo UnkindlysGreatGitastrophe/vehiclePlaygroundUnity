@@ -1004,8 +1004,8 @@ public class CarObj : MonoBehaviour
                 Debug.Log("Kaboom!");
                 currentCarHealth = 0;
                 StartCoroutine(RecoverFromStall());
-                rb.AddExplosionForce(Random.Range(30000, 40000), rb.position, 10, 300f, ForceMode.Impulse);
-                rb.AddTorque(new Vector3(Random.Range(-1f, 1f), Random.Range(-1f, 1f), Random.Range(-1f, 1f)) * Random.Range(2500, 5500), ForceMode.Impulse);
+                rb.AddExplosionForce(UnityEngine.Random.Range(30000, 40000), rb.position, 10, 300f, ForceMode.Impulse);
+                rb.AddTorque(new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f)) * UnityEngine.Random.Range(2500, 5500), ForceMode.Impulse);
                 meshDeform.overBoostDetachment();
             }
             yield return new WaitForSeconds(1);

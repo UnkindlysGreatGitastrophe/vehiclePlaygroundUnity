@@ -1,10 +1,8 @@
 using BezierSolution;
 using UnityEngine;
 using Baracuda.Monitoring;
-using UnityEngine.Rendering;
-using UnityEngine.SocialPlatforms;
-using System.Linq;
 using System.Collections.Generic;
+using System.Collections;
 
 public class AICarController : MonoBehaviour
 {
@@ -13,18 +11,38 @@ public class AICarController : MonoBehaviour
     public CarObj car;
     public BezierSpline[] lineToFollow;
 
-    [Monitor] float normalizedT;
+    float normalizedT;
     public float currentOffset = 10;
-    [Monitor] private float maxCornerSpeed;
-    [Monitor] private float maxBrakeDistance;
-    [Monitor] private float lookAheadDistance;
+    private float maxCornerSpeed;
+    private float maxBrakeDistance;
+    private float lookAheadDistance;
     public float minLookAheadDist = 5;
     public float maxLookAheadDist = 50;
-    [Monitor] public int currentSpline;
+    public int currentSpline;
     public bool findNearestSpline;
 
     public float rangeThreshold = 50;
     public List<BezierSpline> foundBezierSplinePaths;
+
+    [Header("AirTime Controller")]
+    public float timeToFlip;
+
+    private RaycastHit hitInfo;
+    public float distanceBelow;
+    [Monitor] private Vector3 angleDiffs;
+    [Monitor] private Quaternion lastRotation;
+    [Monitor] private Vector3 totalRotation;
+    public Vector3 angularDisplacement;
+    [Monitor] public Vector3 stuntsCount;
+    public float offset;
+    public float rotationThresholdoffset = 75;
+    private Coroutine myRunningCoroutine;
+    public Vector3 timeToStop;
+    public bool randomDirectionChoice;
+    public int chosenDirection;
+    public float stuntTime;
+    public Vector3 maxAngularVelocity;
+    public float estimatedTimeToFlip = 1.25f;
 
     // Start is called before the first frame update
     void Start()
@@ -44,6 +62,18 @@ public class AICarController : MonoBehaviour
                     currentSpline = i;
                 }
             }
+        }
+
+        for (int i = 0; i < 3; i++)
+        {
+            maxAngularVelocity[i] = car.airRotationAmount / (car.rb.inertiaTensor[i] * car.rb.angularDrag);
+            timeToFlip = Mathf.PI * 2 / maxAngularVelocity[i];
+            float d = maxAngularVelocity[i] * 0.93f / 0.8f;
+            float a = 1f - car.rb.angularDrag * Time.fixedDeltaTime;
+            timeToStop[i] = -Time.fixedDeltaTime * (Mathf.Floor(Mathf.Log(d) / Mathf.Log(a)) - 2);
+            Debug.Log(timeToStop);
+            angularDisplacement[i] = 0.5f * maxAngularVelocity[i] * timeToStop[i];
+            Debug.Log(angularDisplacement);
         }
 
     }
@@ -66,6 +96,48 @@ public class AICarController : MonoBehaviour
         }
     }
 
+    void FixedUpdate()
+    {
+        if (car.isCarMidAir())
+        {
+            TrackStunts();
+            lastRotation = car.rb.rotation;
+            getDistanceFromGround();
+            stuntTime = getTimeToHitGround();
+            // List<int> stuntsOrientation = new List<int>();
+            // for (int i = 0; i < 3; i++)
+            // {
+            //     if (stuntTime > timeToFlip + timeToStop[i])
+            //     {
+            //         stuntsOrientation.Add(i);
+            //     }
+
+            //     // This formula comes from solving the differential equation for deceleration.
+            //     // It assumes no external torque is applied during this time.
+            //     TrackStunts();
+            // }
+            // if (stuntsOrientation.Count > 0)
+            // {
+            if (myRunningCoroutine == null && stuntTime > estimatedTimeToFlip)
+            {
+
+                //offset = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
+                totalRotation.x = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
+                myRunningCoroutine = StartCoroutine(ProvideSpinTest2(stuntsCount, chosenDirection));
+            }
+            // }
+            // stuntsOrientation.Clear();
+        }
+        else
+        {
+            if (randomDirectionChoice)
+                chosenDirection = UnityEngine.Random.Range(0, 3);
+            totalRotation = Vector3.zero;
+        }
+
+
+    }
+
 
     void NormalDriving2()
     {
@@ -82,7 +154,7 @@ public class AICarController : MonoBehaviour
 
         maxCornerSpeed = TestCornerSpeed2(normalizedT);
 
-        print("Max Corner Speed: " + maxCornerSpeed + " km/h");
+        //print("Max Corner Speed: " + maxCornerSpeed + " km/h");
 
 
         // Steering Section
@@ -100,7 +172,7 @@ public class AICarController : MonoBehaviour
 
         float angleXZ = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
 
-        print("Steering Angle: " + angleXZ + " Degrees");
+        //print("Steering Angle: " + angleXZ + " Degrees");
 
         car.steeringInput = ClutchObj.Remap(angleXZ, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1);
 
@@ -177,11 +249,195 @@ public class AICarController : MonoBehaviour
 
         if (foundBezierSplinePaths.Count > 0)
         {
-            currentSpline = System.Array.IndexOf(lineToFollow, foundBezierSplinePaths[Random.Range(0, foundBezierSplinePaths.Count)]);
+            currentSpline = System.Array.IndexOf(lineToFollow, foundBezierSplinePaths[UnityEngine.Random.Range(0, foundBezierSplinePaths.Count)]);
             foundBezierSplinePaths.Clear();
             //findNearestSpline = false;
-        }        
+        }
     }
+    
+
+    
+
+    // Call this when you initiate the flip (e.g., applying torque)
+    void getDistanceFromGround()
+    {
+        if (Physics.Raycast(transform.position, Vector3.down, out hitInfo))
+        {
+            // If the ray hits something, get the distance
+            distanceBelow = hitInfo.distance;
+            //Debug.Log($"Distance below point: {distanceBelow} units.");
+
+            // Optional: Draw a debug ray to visualize
+            //Debug.DrawRay(transform.position, Vector3.down * distanceBelow, Color.green);
+        }
+        else
+        {
+            // If the ray doesn't hit anything within maxRayLength
+            //Debug.Log("No collider found below the point within the specified range.");
+            //Debug.DrawRay(transform.position, Vector3.down * 50f, Color.red);
+        }
+
+    }
+
+    float getTimeToHitGround()
+    {
+        // Coefficients for the quadratic equation: at^2 + bt + c = 0
+        float a = 0.5f * Physics.gravity.y;
+        float b = car.rb.velocity.y;
+        float c = distanceBelow;
+        // Calculate the discriminant
+        float discriminant = (b * b) - (4 * a * c);
+
+        if (discriminant >= 0)
+        {
+            // Two possible solutions for time
+            float time1 = (-b + Mathf.Sqrt(discriminant)) / (2 * a);
+            float time2 = (-b - Mathf.Sqrt(discriminant)) / (2 * a);
+
+            // Choose the positive time that makes sense (e.g., if starting above ground and falling)
+            float timeToHitGround = Mathf.Max(time1, time2);
+
+            //Debug.Log($"Time to hit the ground: {timeToHitGround} seconds");
+            return timeToHitGround;
+
+        }
+        else
+        {
+            //Debug.Log("Object may not hit the ground (e.g., if initial velocity is too high upwards and no ground is below).");
+            return 0;
+        }
+    }
+
+
+    void TrackStunts() // Tracks the various stunts a player may perform in the air.
+    {
+
+
+        angleDiffs = Vector3.zero; // The difference between the current and last rotation in Euler Angles
+        Quaternion difference = Quaternion.Inverse(car.rb.rotation) * lastRotation; // Take the difference between current and last rotation (Result is in Quaternions)
+        lastRotation = car.rb.rotation; // Update last rotation
+
+        angleDiffs.x = Mathf.DeltaAngle(0, difference.eulerAngles.x); // Calculates the shortest distance between 0 degrees and the euler angle of the difference in all 3 dimensions 
+        angleDiffs.y = Mathf.DeltaAngle(0, difference.eulerAngles.y); // (This is used to prevent getting -270 degrees instead of 90 degrees for example)
+        angleDiffs.z = Mathf.DeltaAngle(0, difference.eulerAngles.z);
+
+        totalRotation.x += angleDiffs.x; // Add the difference to the total rotation
+        totalRotation.y += angleDiffs.y; // Add the difference to the total rotation
+        totalRotation.z += angleDiffs.z; // Add the difference to the total rotation
+
+        // Increase stunt count for when a full revolution is complete.
+
+        if (totalRotation.x < (-360 + offset + rotationThresholdoffset))
+        {
+            totalRotation.x = 0;
+            stuntsCount[0]++;
+        }
+        else if (totalRotation.x > (360 - offset - rotationThresholdoffset))
+        {
+            totalRotation.x = 0;
+            stuntsCount[0]++;
+
+        }
+
+        if (totalRotation.y < -360)
+        {
+            totalRotation.y = 0;
+            stuntsCount[1]++;
+        }
+        else if (totalRotation.y > 360 )
+        {
+            totalRotation.y = 0;
+            stuntsCount[1]++;
+
+        }
+
+        if (totalRotation.z < (-360 + offset + rotationThresholdoffset))
+        {
+            totalRotation.z = 0;
+            stuntsCount[2]++;
+        }
+        else if (totalRotation.z > (360 - offset - rotationThresholdoffset) )
+        {
+            totalRotation.z = 0;
+            stuntsCount[2]++;
+
+        }
+    }
+
+
+    private IEnumerator ProvideSpinTest2(Vector3 prevStunts, int stuntType)
+    {
+        float initialTime = Time.time;
+        while (true)
+        {
+            if (stuntType == 0)
+            {
+                car.rb.AddTorque(car.airRotationAmount * car.rb.transform.right, ForceMode.VelocityChange);
+                if (stuntsCount[0] != prevStunts[0])
+                {
+                    myRunningCoroutine = null;
+                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    yield break;
+
+                }
+                yield return null;
+            }
+
+            if (stuntType == 1)
+            {
+                car.rb.AddTorque(car.airRotationAmount * car.rb.transform.up, ForceMode.VelocityChange);
+                if (stuntsCount[1] != prevStunts[1])
+                {
+                    myRunningCoroutine = null;
+                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    yield break;
+                }
+                yield return null;
+            }
+
+            if (stuntType == 2)
+            {
+                car.rb.AddRelativeTorque(0f, 0f, car.airRotationAmount, ForceMode.VelocityChange);
+                if (stuntsCount[2] != prevStunts[2])
+                {
+                    myRunningCoroutine = null;
+                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    yield break;
+                }
+                yield return null;
+            }
+            if (!car.isCarMidAir())
+            {
+                myRunningCoroutine = null;
+                yield break;
+            }
+            yield return null;
+
+        }
+
+    }
+
+    // IEnumerator TimeToStop()
+    // {
+
+    //     float initialTime = Time.time;
+    //     while (rb.angularVelocity.x > 0.80f)
+    //     {
+    //         yield return null;
+    //     }
+    //     Debug.Log("Time to reach 0.8 rad/s: " + (Time.time - initialTime));
+    // }
+
+    // IEnumerator TimeToAccel()
+    // {
+
+    //     float initialTime = Time.time;
+    //     while (rb.angularVelocity.x < (maxAngularVelocity - (1-rb.angularDrag*Time.fixedDeltaTime)))
+    //     {
+    //         yield return null;
+    //     }
+    //     Debug.Log("Time to reach "+ (maxAngularVelocity - (1-rb.angularDrag*Time.fixedDeltaTime)) + ": " + (Time.time - initialTime));
+    // }
 
 
 
