@@ -981,8 +981,12 @@ public class CarObj : MonoBehaviour
             if (nitroSystem.nitroValue == 1 && !nitroSystem.isOverBoosting)
             {
                 Debug.Log("OverBoost Alert!");
+                if (isAIPowered)
+                {
+                    nitroSystem.AIoverBoostDisengageValue = UnityEngine.Random.value;
+                }
                 nitroSystem.isOverBoosting = true;
-                StartCoroutine(overBoostCountDown());
+                StartCoroutine(nitroSystem.overBoostCountDown());
             }
         }
 
@@ -1014,7 +1018,7 @@ public class CarObj : MonoBehaviour
 
     }
 
-    private IEnumerator NitroReactivation()
+    public IEnumerator NitroReactivation()
     {
         while (nitroSystem.nitroOn)
         {
@@ -1079,7 +1083,7 @@ public class CarObj : MonoBehaviour
 
     }
 
-    private IEnumerator RecoverFromStall()
+    internal IEnumerator RecoverFromStall()
     {
         float previousAngDrap = rb.angularDrag;
         status = CarStatus.STALLED;

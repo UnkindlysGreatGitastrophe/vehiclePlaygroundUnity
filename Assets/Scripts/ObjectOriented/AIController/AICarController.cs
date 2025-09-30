@@ -16,6 +16,7 @@ public class AICarController : MonoBehaviour
     private float maxCornerSpeed;
     private float maxBrakeDistance;
     private float lookAheadDistance;
+    private Vector3 closestPointToLookAhead;
     public float minLookAheadDist = 5;
     public float maxLookAheadDist = 50;
     public int currentSpline;
@@ -29,11 +30,11 @@ public class AICarController : MonoBehaviour
 
     private RaycastHit hitInfo;
     public float distanceBelow;
-    [Monitor] private Vector3 angleDiffs;
-    [Monitor] private Quaternion lastRotation;
-    [Monitor] private Vector3 totalRotation;
+    private Vector3 angleDiffs;
+    private Quaternion lastRotation;
+    private Vector3 totalRotation;
     public Vector3 angularDisplacement;
-    [Monitor] public Vector3 stuntsCount;
+    public Vector3 stuntsCount;
     public float offset;
     public float rotationThresholdoffset = 75;
     private Coroutine myRunningCoroutine;
@@ -43,12 +44,23 @@ public class AICarController : MonoBehaviour
     public float stuntTime;
     public Vector3 maxAngularVelocity;
     public float estimatedTimeToFlip = 1.25f;
+    [Monitor] private float velocityDiff;
+    public float nitroDeactivationThreshold;
+    public float maxNitroDeactivationPerLevel;
+
+    [Header("PID")]
+    public float proportionalGain;
+
+    private void OnValidate()
+    {
+        maxNitroDeactivationPerLevel = 1 / (car.nitroSystem.maxOverBoostPenalty-1);
+
+    }
 
     // Start is called before the first frame update
     void Start()
     {
         this.StartMonitoring();
-
         if (findNearestSpline)
         {
             float closestSpline = Mathf.Infinity;
@@ -94,16 +106,19 @@ public class AICarController : MonoBehaviour
         {
             SearchForAlternateSpline();
         }
+
     }
 
     void FixedUpdate()
     {
+        AINitroBehaviour();
         if (car.isCarMidAir())
         {
             TrackStunts();
             lastRotation = car.rb.rotation;
             getDistanceFromGround();
             stuntTime = getTimeToHitGround();
+
             // List<int> stuntsOrientation = new List<int>();
             // for (int i = 0; i < 3; i++)
             // {
@@ -125,6 +140,10 @@ public class AICarController : MonoBehaviour
                 totalRotation.x = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
                 myRunningCoroutine = StartCoroutine(ProvideSpinTest2(stuntsCount, chosenDirection));
             }
+            // else if (car.isCarMidAir() && stuntTime < estimatedTimeToFlip)
+            // {
+            //     engageStabilization();
+            // }
             // }
             // stuntsOrientation.Clear();
         }
@@ -133,7 +152,11 @@ public class AICarController : MonoBehaviour
             if (randomDirectionChoice)
                 chosenDirection = UnityEngine.Random.Range(0, 3);
             totalRotation = Vector3.zero;
+
+
         }
+
+
 
 
     }
@@ -148,9 +171,12 @@ public class AICarController : MonoBehaviour
 
         lookAheadDistance = Mathf.Clamp(maxBrakeDistance - (car.BrakeInput * 5 * Time.deltaTime), minLookAheadDist, maxLookAheadDist);
 
-        Vector3 closestPointToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * lookAheadDistance), out normalizedT, 95);
+        //closestPointToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * lookAheadDistance), out normalizedT, 95);
+        closestPointToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95);
+        normalizedT = Mathf.Clamp01(normalizedT + (lookAheadDistance / lineToFollow[currentSpline].length));
 
-        Debug.DrawLine(car.transform.position, closestPointToLookAhead, Color.yellow);
+        //Debug.DrawLine(car.transform.position, closestPointToLookAhead, Color.yellow);
+        Debug.DrawLine(car.transform.position, lineToFollow[currentSpline].GetPoint(normalizedT), Color.yellow);
 
         maxCornerSpeed = TestCornerSpeed2(normalizedT);
 
@@ -161,8 +187,10 @@ public class AICarController : MonoBehaviour
 
         float steeringLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 50);
 
-        Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * steeringLookAheadDistance), 95);
-
+        //Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * steeringLookAheadDistance), 95);
+        Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95);
+        normalizedT = Mathf.Clamp01(normalizedT + (steeringLookAheadDistance / lineToFollow[currentSpline].length));
+        closestPointSteerToLookAhead = lineToFollow[currentSpline].GetPoint(normalizedT);
         Debug.DrawLine(car.transform.position, closestPointSteerToLookAhead, Color.black);
 
 
@@ -180,7 +208,7 @@ public class AICarController : MonoBehaviour
 
         // Throttle/Brake Section:
 
-        float velocityDiff = car.carSpeed - maxCornerSpeed;
+        velocityDiff = car.carSpeed - maxCornerSpeed;
         if (velocityDiff > 0.0) //braking case
         {
             car.BrakeInput = ClutchObj.Remap(velocityDiff, 1, 5, 0.0f, 1.0f);
@@ -190,6 +218,8 @@ public class AICarController : MonoBehaviour
         {
             car.Throttle = 1;
             car.BrakeInput = 0;
+
+
 
         }
 
@@ -254,9 +284,9 @@ public class AICarController : MonoBehaviour
             //findNearestSpline = false;
         }
     }
-    
 
-    
+
+
 
     // Call this when you initiate the flip (e.g., applying torque)
     void getDistanceFromGround()
@@ -339,12 +369,12 @@ public class AICarController : MonoBehaviour
 
         }
 
-        if (totalRotation.y < -360)
+        if (totalRotation.y < -360 + rotationThresholdoffset)
         {
             totalRotation.y = 0;
             stuntsCount[1]++;
         }
-        else if (totalRotation.y > 360 )
+        else if (totalRotation.y > 360 - rotationThresholdoffset)
         {
             totalRotation.y = 0;
             stuntsCount[1]++;
@@ -356,7 +386,7 @@ public class AICarController : MonoBehaviour
             totalRotation.z = 0;
             stuntsCount[2]++;
         }
-        else if (totalRotation.z > (360 - offset - rotationThresholdoffset) )
+        else if (totalRotation.z > (360 - offset - rotationThresholdoffset))
         {
             totalRotation.z = 0;
             stuntsCount[2]++;
@@ -409,11 +439,86 @@ public class AICarController : MonoBehaviour
             if (!car.isCarMidAir())
             {
                 myRunningCoroutine = null;
+                for (int i = 0; i < car.wheels.Length; i++)
+                {
+                    float previousGrip = car.wheels[i].tireGripFactor;
+                    car.wheels[i].tireGripFactor = 0;
+                    StartCoroutine(car.wheels[i].disengageGrip(previousGrip));
+                }
                 yield break;
             }
             yield return null;
 
         }
+
+    }
+
+    void AINitroBehaviour()
+    {
+
+        if ((velocityDiff < -5 || float.IsNaN(velocityDiff)) && car.nitroSystem.nitroDelay == 0 && car.status == CarObj.CarStatus.RUNNING && !car.isCarMidAir())
+        {
+            if (car.nitroSystem.isOverBoosting)
+            {
+                if (car.nitroSystem.AIoverBoostDisengageValue > (car.nitroSystem.nitroOverBoostValue * nitroDeactivationThreshold))
+                {
+                    car.nitroSystem.nitroOn = true;
+                    car.nitroSystem.nitroDelayInit = true;
+                    car.activateNitro();
+                }
+                else
+                {
+                    car.nitroSystem.nitroOn = false;
+                    car.nitroSystem.nitroValue = Mathf.Clamp(car.nitroSystem.nitroValue - Time.fixedDeltaTime * car.nitroSystem.nitroCoolRate, 0, 1);
+                    if (car.nitroSystem.nitroDelayInit)
+                    {
+                        car.nitroSystem.nitroDelay = (car.nitroSystem.isOverBoosting) ? car.nitroSystem.nitroOverBoostDelayTime : car.nitroSystem.nitroDelayTime;
+                        car.nitroSystem.nitroDelayInit = false;
+                    }
+                    car.nitroSystem.isOverBoosting = false;
+                    car.engine.nitroTorque = 0;
+                    StartCoroutine(car.NitroReactivation());
+                }
+            }
+            else
+            {
+                car.nitroSystem.nitroOn = true;
+                car.nitroSystem.nitroDelayInit = true;
+                car.activateNitro();
+            }
+
+        }
+        else
+        {
+            car.nitroSystem.nitroOn = false;
+            car.nitroSystem.nitroValue = Mathf.Clamp(car.nitroSystem.nitroValue - Time.fixedDeltaTime * car.nitroSystem.nitroCoolRate, 0, 1);
+            if (car.nitroSystem.nitroDelayInit)
+            {
+                car.nitroSystem.nitroDelay = (car.nitroSystem.isOverBoosting) ? car.nitroSystem.nitroOverBoostDelayTime : car.nitroSystem.nitroDelayTime;
+                car.nitroSystem.nitroDelayInit = false;
+            }
+            car.nitroSystem.isOverBoosting = false;
+            car.engine.nitroTorque = 0;
+            StartCoroutine(car.nitroSystem.NitroReactivation());
+        }
+
+    }
+    
+    void engageStabilization() // Function for being able to stabilize the car when in mid air, and front the car from rolling after a jump. Also can flip an upside down car if near stationary
+    {
+
+        Vector3 currentForward = transform.forward;
+        Vector3 targetDirection = (closestPointToLookAhead - transform.position).normalized; // Example for facing a target object
+        Vector3 torqueVector = Vector3.Cross(currentForward, targetDirection);
+            Vector3 yAxisTorque = Vector3.Project(torqueVector, Vector3.up);
+
+        //Vector3 error = targetValue - rb.transform.up;
+        // Calculate P
+
+        car.rb.AddTorque( yAxisTorque , ForceMode.VelocityChange); // Combine and add all forces as torques
+
+
+        // float error = targetValue - currentValue;
 
     }
 

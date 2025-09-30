@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using Baracuda.Monitoring;
 using UnityEngine;
 
 public class NitroObj : MonoBehaviour
@@ -18,11 +19,13 @@ public class NitroObj : MonoBehaviour
     public float airNitroCoolRate = 2; // The rate of which the heating of the nitro decreases as the nitro is disengaged while in mid-air
     public float maxOverBoostPenalty = 3; // In seconds, this determines the amount of time a car can spend overboosting before it explodes
     public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
-    internal float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
+    [Monitor] internal float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
     public bool isOverBoosting; // Determines if the car is in the overboost zone
     internal bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
     public bool nitroOn; // Indicates if the nitro is being used or not
     public float boostStuntMultiplier = 1;
+
+    [Monitor] public float AIoverBoostDisengageValue = 0.5f;
 
     public float kineticBoost = 1500f;
     public float kineticBoostMultiplier = 3.5f;
@@ -31,6 +34,7 @@ public class NitroObj : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
+        this.StartMonitoring();
         if (transform.parent.GetComponent<CarObj>() != null)
         {
             car = transform.parent.GetComponent<CarObj>();
@@ -59,6 +63,10 @@ public class NitroObj : MonoBehaviour
             {
                 Debug.Log("OverBoost Alert!");
                 isOverBoosting = true;
+                if (car.isAIPowered)
+                {
+                    car.nitroSystem.AIoverBoostDisengageValue = UnityEngine.Random.value;
+                }
                 StartCoroutine(overBoostCountDown());
             }
         }
@@ -71,18 +79,26 @@ public class NitroObj : MonoBehaviour
         car.engine.nitroTorque = car.engine.initialTorque * nitrousPower * boostStuntMultiplier;
     }
 
-    private IEnumerator overBoostCountDown()
+    internal IEnumerator overBoostCountDown()
     {
-        while (nitroOn)
+        while (nitroOn && isOverBoosting)
         {
+
             nitroOverBoostValue += 1;
             if (nitroOverBoostValue >= maxOverBoostPenalty)
             {
                 Debug.Log("Kaboom!");
-            } 
+                car.currentCarHealth = 0;
+                StartCoroutine(car.RecoverFromStall());
+                car.rb.AddExplosionForce(UnityEngine.Random.Range(30000, 40000), car.rb.position, 10, 300f, ForceMode.Impulse);
+                car.rb.AddTorque(new Vector3(UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f), UnityEngine.Random.Range(-1f, 1f)) * UnityEngine.Random.Range(2500, 5500), ForceMode.Impulse);
+                car.meshDeform.overBoostDetachment();
+            }
             yield return new WaitForSeconds(1);
 
         }
+        nitroOverBoostValue = 0;
+        yield break;
         
     }
 
@@ -90,6 +106,7 @@ public class NitroObj : MonoBehaviour
     {
         while (nitroOn)
         {
+        
             yield return new WaitForSeconds(1);
             
             Debug.Log("Still Boosting...");
