@@ -63,7 +63,7 @@ public class CarObj : MonoBehaviour
     [Header("Input")]
 
     [Tooltip("The gas pedal!, 0 = no throttle, 1 = full throttle")]
-    [Monitor] public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
+    public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
 
     [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
     [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
@@ -72,7 +72,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
     [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
-    [Monitor] public bool PIDengaged; // Bool that allows the car to stablize itself in the air
+    public bool PIDengaged; // Bool that allows the car to stablize itself in the air
 
     public float PIDstrength = 1;
     [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
