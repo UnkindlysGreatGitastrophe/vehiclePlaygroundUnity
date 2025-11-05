@@ -23,6 +23,10 @@ public class GearBoxObj : MonoBehaviour
     [Tooltip("Automatic or Manual?")]
     public GearboxType Transmissiontype;
 
+    public float throttleMultiplier = 1;
+
+    public bool automaticShiftPrevention = false;
+
 
 
     [Header("GearBox Outputs")]
@@ -94,14 +98,14 @@ public class GearBoxObj : MonoBehaviour
                 // Debug.Log("Gear To First");
             }
             
-            else if (currentGear != 0 && car.carSpeed < 0.85 *GetMaxGearSpeed(currentGear - 1)  && currentGear > 2) // If the car is NOT in reverse gear, is gear 2 or higher, and the car speed is 85% or less than the maximum speed of the previous gear, we downshift.
+            else if (!automaticShiftPrevention && currentGear != 0 && car.carSpeed < 0.85 *GetMaxGearSpeed(currentGear - 1)  && currentGear > 2) // If the car is NOT in reverse gear, is gear 2 or higher, and the car speed is 85% or less than the maximum speed of the previous gear, we downshift.
             {
                 GearDOWN();
                 //Debug.Log("Gear Down");
             }
             else if (!car.nitroSystem.nitroOn)
             {
-                if (Mathf.Abs(car.calculateAVGPoweredSlipRatio()) < (.10f + (.10f *car.poweredWheels[0].tireGripFactor/2)) && (car.engine.engineAngularVelocity * car.engine.AV_2_RPM) > (car.engine.rpmLimit*0.99f) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+                if (!automaticShiftPrevention && Mathf.Abs(car.calculateAVGPoweredSlipRatio()) < (.10f + (.10f *car.poweredWheels[0].tireGripFactor/2)) && (car.engine.engineAngularVelocity * car.engine.AV_2_RPM) > (car.engine.rpmLimit*0.99f) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
                 {
                     GearUP();
                     //Debug.Log("Gear Up");
@@ -109,7 +113,7 @@ public class GearBoxObj : MonoBehaviour
             }
             else 
             {
-                if (car.carSpeed >= 0.9f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
+                if (!automaticShiftPrevention && car.carSpeed >= 0.9f * Mathf.Abs(GetMaxGearSpeed(currentGear)) && currentGear != 0) // If the maximum gear speed approximation is reached from the car, and the gear is NOT reverse gear, then we upshift a gear
                 {
                     GearUP();
                     //Debug.Log("Gear Up");
@@ -135,7 +139,7 @@ public class GearBoxObj : MonoBehaviour
         }
     }
 
-    private void GearToFirst() // Code to shift gear to first (Useful for automatic transmission)
+    internal void GearToFirst() // Code to shift gear to first (Useful for automatic transmission)
     {
         if (currentGear < numOfGears-1 && gearEngaged) // Boundary checking (0 <= gear < numOfGears)
         {
@@ -145,7 +149,7 @@ public class GearBoxObj : MonoBehaviour
         }
     }
     
-    private void GearREVERSE() // Code to shift gear to reverse (Useful for automatic transmission)
+    internal void GearREVERSE() // Code to shift gear to reverse (Useful for automatic transmission)
     {
         if (gearEngaged) // Check to see if the gears correctly engaged 
         {
@@ -204,12 +208,20 @@ public class GearBoxObj : MonoBehaviour
 
     private IEnumerator NormalShift(int shiftDirection) // The normal Upshifting procedure
     {
+        float previousGear = currentGear;
         currentGear = 1; // Shift to neutral
         gearEngaged = false;
         car.Throttle = 0;
         yield return new WaitForSeconds(shiftTime);
+        throttleMultiplier = 10;
         currentGear = shiftDirection;
         gearEngaged = true;
+        if (previousGear < shiftDirection)
+            automaticShiftPrevention = true;
+        yield return new WaitForSeconds(1);
+        throttleMultiplier = 1;
+        automaticShiftPrevention = false;
+
 
     }
 

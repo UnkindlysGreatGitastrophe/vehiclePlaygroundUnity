@@ -16,6 +16,7 @@ public class AICarController : MonoBehaviour
     float normalizedT;
     public float currentOffset = 10;
     [Monitor] private float maxCornerSpeed;
+    [Monitor] private float steeringLookAheadDistance;
     private float maxBrakeDistance;
     [Monitor] private float lookAheadDistance;
     private Vector3 closestPointToLookAhead;
@@ -66,7 +67,13 @@ public class AICarController : MonoBehaviour
     bool[] rayHits;
     float[] angles;
     RaycastHit[] raycastHits;
-
+    private bool tiebreakerMode;
+    private float recordedSumOfDangers;
+    private int steerDirection;
+    private float angleTest;
+    [Monitor] private float timeUntilReverse;
+    private bool isReversing;
+    private float reverseTime;
 
     private void OnValidate()
     {
@@ -78,11 +85,11 @@ public class AICarController : MonoBehaviour
     void Start()
     {
         this.StartMonitoring();
-        interest = new float[5];
-        raycastHits = new RaycastHit[5];
-        rayHits = new bool[5];
-        danger = new float[5];
-        angles = new float[5];
+        interest = new float[4];
+        raycastHits = new RaycastHit[4];
+        rayHits = new bool[4];
+        danger = new float[4];
+        angles = new float[4];
         if (findNearestSpline)
         {
             float closestSpline = Mathf.Infinity;
@@ -122,24 +129,33 @@ public class AICarController : MonoBehaviour
                     car.transform.position = nearestPointToSpline;
                 } */
 
-        NormalDriving2();
         lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out float closestT, 95);
         if (!lineToFollow[currentSpline].loop && closestT > 0.99f && findNearestSpline)
         {
             SearchForAlternateSpline();
         }
 
+        if (car.isAIPowered)
+        {
+            NormalDriving2();
+        }
+
+
+
     }
 
     void FixedUpdate()
     {
-        AINitroBehaviour();
+        if (car.isAIPowered)
+        {
+                    AINitroBehaviour();
         if (car.isCarMidAir())
         {
             TrackStunts();
             lastRotation = car.rb.rotation;
             getDistanceFromGround();
             stuntTime = getTimeToHitGround();
+            car.PIDengaged = false;
 
             // List<int> stuntsOrientation = new List<int>();
             // for (int i = 0; i < 3; i++)
@@ -172,11 +188,27 @@ public class AICarController : MonoBehaviour
             if (randomDirectionChoice)
                 chosenDirection = UnityEngine.Random.Range(0, 3);
             totalRotation = Vector3.zero;
+            if (!car.PIDengaged)
+            {
+                for (int i = 0; i < car.wheels.Length; i++)
+                {
+                    float previousGrip = car.wheels[i].tireGripFactor;
+                    car.wheels[i].tireGripFactor = 0;
+                    StartCoroutine(car.wheels[i].disengageGrip(previousGrip));
+                    car.Throttle = 0;
+
+                }
+            }
+            car.PIDengaged = true;
 
 
         }
 
+        }
+
+
     }
+
 
 
     void NormalDriving2()
@@ -185,48 +217,10 @@ public class AICarController : MonoBehaviour
         // Cornering Speed Section
         maxBrakeDistance = calculateBrakeDistance(); // Get Maximum Brake Distance to a standstill
         lookAheadDistance = Mathf.Clamp(maxBrakeDistance - (car.BrakeInput * 5 * Time.deltaTime), minLookAheadDist, maxLookAheadDist); // Add a bit of an offset when brakes applied 
-        //closestPointToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * lookAheadDistance), out normalizedT, 95);
         closestPointToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95); // Get closest point, no lookahead distance applied yet.
         normalizedT = Mathf.Clamp01(normalizedT + (lookAheadDistance / lineToFollow[currentSpline].length)); // Get offset point here, add lookahead distance here
-        //Debug.DrawLine(car.transform.position, closestPointToLookAhead, Color.yellow);
-        //Debug.DrawLine(car.transform.position, lineToFollow[currentSpline].GetPoint(normalizedT), Color.yellow);
-        
         maxCornerSpeed = TestCornerSpeed2(normalizedT); // Get Corner Speed using 3 points here
                                                         //print("Max Corner Speed: " + maxCornerSpeed + " km/h");
-
-
-
-        // Steering Section
-        float steeringLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 50);
-        //Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * steeringLookAheadDistance), 95);
-        Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95); // Get Nearest point without offset
-        normalizedT = Mathf.Clamp01(normalizedT + (steeringLookAheadDistance / lineToFollow[currentSpline].length)); // Add lookahead distance to steering
-        if (checkForObstructionAtPoint(closestPointSteerToLookAhead, steeringLookAheadDistance))
-        {
-            closestPointSteerToLookAhead = ContextSteering2();
-
-        }
-        else
-        {
-            closestPointSteerToLookAhead = lineToFollow[currentSpline].GetPoint(normalizedT); // Get actual point with lookahead distance
-
-
-        }
-        Vector3 worldDirection = closestPointSteerToLookAhead - car.transform.position;
-        Vector3 localDirection = transform.InverseTransformDirection(worldDirection);
-
-        // Add Context to Steering
-        float resultSteer = ContextSteering();
-
-
-        float angleXZ = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
-        //print("Steering Angle: " + angleXZ + " Degrees");
-        if (Mathf.Abs(angleXZ) > Mathf.Abs(car.clampedSteeringAngle))
-        {
-            car.BrakeInput = ClutchObj.Remap(Mathf.Abs(resultAngle) - Mathf.Abs(car.clampedSteeringAngle), 0, 4, 0, 1);
-        }
-        car.steeringInput = ClutchObj.Remap(angleXZ, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1);
-        //car.steeringInput = Mathf.Lerp(car.steeringInput, ClutchObj.Remap(resultSteer, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1),Time.deltaTime*2);
 
 
         // Throttle/Brake Section:
@@ -244,17 +238,93 @@ public class AICarController : MonoBehaviour
 
         }
 
+        // Steering Section
+        steeringLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 50);
+        float contextLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 100);
+        Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95); // Get Nearest point without offset
+        normalizedT = Mathf.Clamp01(normalizedT + (steeringLookAheadDistance / lineToFollow[currentSpline].length)); // Add lookahead distance to steering
+        if (checkForObstructionAtPoint(lineToFollow[currentSpline].GetPoint(normalizedT), contextLookAheadDistance))
+        {
+            closestPointSteerToLookAhead = ContextSteering2();
+        }
+        else
+        {
+            closestPointSteerToLookAhead = lineToFollow[currentSpline].GetPoint(normalizedT); // Get actual point with lookahead distance
+        }
+        //closestPointSteerToLookAhead = ContextSteering2();
+        Vector3 worldDirection = closestPointSteerToLookAhead - car.transform.position;
+        Vector3 localDirection = transform.InverseTransformDirection(worldDirection);
+
+
+        float angleXZ = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
+        angleTest = Mathf.Lerp(angleTest, angleXZ, 10*Time.deltaTime);
+        //print("Steering Angle: " + angleXZ + " Degrees");
+        car.steeringInput = Mathf.Sign(car.carSpeed)*ClutchObj.Remap(angleTest, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1);
+        //car.steeringInput = Mathf.Lerp(car.steeringInput, ClutchObj.Remap(resultSteer, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1),Time.deltaTime*2);
+
+
+        if (car.carSpeed < 10)
+        {
+            timeUntilReverse += Time.deltaTime;
+            if (timeUntilReverse > 3f)
+                isReversing = true;
+            if (isReversing)
+                AIReverseMode();
+        }
+        else
+        {
+            timeUntilReverse = 0;
+        }
+
+        float avgRearSlipAngle = (car.wheels[2].slipAngle + car.wheels[3].slipAngle) / 2f;
+        float avgFrontSlipAngle = (car.wheels[0].slipAngle + car.wheels[1].slipAngle) / 2f;
+
+        if (Mathf.Abs(avgRearSlipAngle) - Mathf.Abs(avgFrontSlipAngle) > 1)
+        {
+            car.Throttle = 0;
+            car.eBrakeInput = 1;
+        }
+        else
+        {
+            car.eBrakeInput = 0;
+        }
+
 
     }
+
+
 
     private bool checkForObstructionAtPoint(Vector3 pointOfInterest, float steeringLookAheadDistance)
     {
         Vector3 rayOrigin = car.transform.position;
-        Vector3 rayDirection = lineToFollow[currentSpline].GetPoint(normalizedT) - car.transform.position; // Calculate direction and length
-        Debug.DrawRay(rayOrigin, rayDirection, Color.yellow);
-        if (Physics.Raycast(transform.position, rayDirection, steeringLookAheadDistance, ~(1 << LayerMask.NameToLayer("Player"))) || Physics.Raycast(transform.position, transform.forward, steeringLookAheadDistance, ~(1 << LayerMask.NameToLayer("Player"))))
+        Vector3 rayDirection = pointOfInterest - car.transform.position; // Calculate direction and length
+        Debug.DrawRay(rayOrigin, rayDirection.normalized * Vector3.Distance(transform.position, pointOfInterest), Color.yellow);
+        Debug.DrawRay(rayOrigin, transform.forward * steeringLookAheadDistance, Color.red);
+        steeringLookAheadDistance = Mathf.Max(steeringLookAheadDistance, 5);
+        RaycastHit R1;
+        RaycastHit R2;
+        if (Physics.Raycast(transform.position, rayDirection.normalized, out R1, Vector3.Distance(transform.position, pointOfInterest), ~LayerMask.GetMask("Player", "Ignore Raycast")))
         {
-            return true;
+
+            if (R1.collider != null)
+            {
+                if (Mathf.Abs(R1.normal.y) < 0.1f) // Small threshold to account for slight angles
+                {
+                    return true;
+                }
+            }
+
+        }
+        if (Physics.Raycast(transform.position, transform.forward, out R2, steeringLookAheadDistance, ~LayerMask.GetMask("Player", "Ignore Raycast")))
+        {
+
+            if (R2.collider != null)
+            {
+                if (Mathf.Abs(R2.normal.y) < 0.1f) // Small threshold to account for slight angles
+                {
+                    return true;
+                }
+            }
         }
         return false;
     }
@@ -262,68 +332,29 @@ public class AICarController : MonoBehaviour
     private Vector3 ContextSteering2()
     {
         // Perform the Raycast
-        float steeringLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 50);
-        //Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * steeringLookAheadDistance), 95);
+        float contextLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 100);
         Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95); // Get Nearest point without offset
-        normalizedT = Mathf.Clamp01(normalizedT + (steeringLookAheadDistance / lineToFollow[currentSpline].length)); // Add lookahead distance to steering
+        normalizedT = Mathf.Clamp01(normalizedT + (contextLookAheadDistance / lineToFollow[currentSpline].length)); // Add lookahead distance to steering
         closestPointSteerToLookAhead = lineToFollow[currentSpline].GetPoint(normalizedT); // Get actual point with lookahead distance
-        for (int i = 0; i < 5; i++)
-        {
-            angles[i] = (((float)i - 2) / 2) * car.clampedSteeringAngle;
-            Vector3 rayDirection = Quaternion.Euler(0, (((float)i - 2) / 2) * car.clampedSteeringAngle, 0) * transform.forward;
-            rayHits[i] = Physics.Raycast(transform.position, rayDirection, out raycastHits[i], steeringLookAheadDistance, ~(1 << LayerMask.NameToLayer("Player")));
-            //interest[i] = Mathf.Max(0f, Vector3.Dot(rayDirection, lineToFollow[currentSpline].GetTangent(normalizedT).normalized));
-            interest[i] = Mathf.Max(0f,Vector3.Dot(rayDirection, (closestPointSteerToLookAhead - car.transform.position).normalized));
-            if (raycastHits[i].collider != null)
-            {
-                if (Mathf.Abs(raycastHits[i].normal.y) < 0.1f) // Small threshold to account for slight angles
-                {
+        float sumOfDangers = 0;
+        Vector3 rayDirection;
 
-                    // This is likely a wall
-                    Debug.Log(String.Format("Raycast #{0} Hit a wall.", i));
-                    Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.red);
-                    danger[i] = 1;   
-                    interest[i] = 0f;
-                
-                    
-                }
+        for (int i = 0; i < 4; i++)
+        {
+            if (i > 1)
+            {
+                angles[i] = (((float)i - 1) / 2) * car.clampedSteeringAngle;
+                rayDirection = Quaternion.Euler(0, (((float)i - 1) / 2) * car.clampedSteeringAngle / 2, 0) * transform.forward;
+
+
             }
             else
             {
-                Debug.DrawRay(transform.position, rayDirection * steeringLookAheadDistance);
-                danger[i] = 0;   
+                angles[i] = (((float)i - 2) / 2) * car.clampedSteeringAngle;
+                rayDirection = Quaternion.Euler(0, (((float)i - 2) / 2) * car.clampedSteeringAngle / 2, 0) * transform.forward;
+
             }
-
-        }
-        resultAngle = 0;
-        for (int i = 0; i < 5; i++)
-        {
-            resultAngle += angles[i] * interest[i];
-        }
-
-        resultAngle = Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle);
-        Vector3 resultDirection = Quaternion.Euler(0, resultAngle, 0) * transform.forward;
-        Debug.Log("Desired Direction is: " + resultAngle + " Degrees");
-        Debug.DrawRay(transform.position, resultDirection, Color.black);
-        
-        return transform.position + resultDirection * 40f;
-    }
-
-
-    private float ContextSteering()
-    {
-        // Perform the Raycast
-        float steeringLookAheadDistance = ClutchObj.Remap(car.carSpeed, 5, 200, 2, 50);
-        //Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position + (car.transform.forward * steeringLookAheadDistance), 95);
-        Vector3 closestPointSteerToLookAhead = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out normalizedT, 95); // Get Nearest point without offset
-        normalizedT = Mathf.Clamp01(normalizedT + (steeringLookAheadDistance / lineToFollow[currentSpline].length)); // Add lookahead distance to steering
-        closestPointSteerToLookAhead = lineToFollow[currentSpline].GetPoint(normalizedT); // Get actual point with lookahead distance
-        for (int i = 0; i < 5; i++)
-        {
-            angles[i] = (((float)i - 2) / 2) * car.clampedSteeringAngle;
-            Vector3 rayDirection = Quaternion.Euler(0, (((float)i - 2) / 2) * car.clampedSteeringAngle, 0) * transform.forward;
-            rayHits[i] = Physics.Raycast(transform.position, rayDirection, out raycastHits[i], steeringLookAheadDistance, ~(1 << LayerMask.NameToLayer("Player")));
-            //interest[i] = Mathf.Max(0f, Vector3.Dot(rayDirection, lineToFollow[currentSpline].GetTangent(normalizedT).normalized));
+            rayHits[i] = Physics.Raycast(transform.position, rayDirection, out raycastHits[i], contextLookAheadDistance, ~(1 << LayerMask.NameToLayer("Player")));
             interest[i] = Mathf.Max(0f, Vector3.Dot(rayDirection, (closestPointSteerToLookAhead - car.transform.position).normalized));
             if (raycastHits[i].collider != null)
             {
@@ -331,56 +362,211 @@ public class AICarController : MonoBehaviour
                 {
 
                     // This is likely a wall
-                    Debug.Log(String.Format("Raycast #{0} Hit a wall.", i));
-                    //Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.red);
+                    //Debug.Log(String.Format("Raycast #{0} Hit a wall.", i));
+                    Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.red);
                     danger[i] = 1;
-                    interest[i] = 0f;
-
+                    //interest[i] = 0f;
+                    sumOfDangers += 1;
 
                 }
-                // else if (raycastHits[i].normal.y > 0.1f && raycastHits[i].normal.y < 0.9f) // Adjust thresholds as needed
-                // {
-                //     // This is likely an upward ramp
-                //     Debug.Log(String.Format("Raycast #{0} Hit an upward ramp.", i));
-                //     Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.yellow);
-
-                // }
-                // else if (raycastHits[i].normal.y < -0.1f && raycastHits[i].normal.y > -0.9f)
-                // {
-                //     // This is likely a downward ramp
-                //     Debug.Log(String.Format("Raycast #{0} Hit a downward ramp.", i));
-                //     Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.yellow);
-
-                // }
-                // else
-                // {
-                //     Debug.Log(String.Format("Raycast #{0} Hit an unknown object, normal.y is: #{1}.", i, raycastHits[i].normal.y));
-                //     Debug.DrawRay(transform.position, rayDirection * raycastHits[i].distance, Color.yellow);
-                // }
             }
             else
             {
-                //Debug.DrawRay(transform.position, rayDirection * steeringLookAheadDistance);
+                Debug.DrawRay(transform.position, rayDirection * contextLookAheadDistance);
                 danger[i] = 0;
             }
+        }
+
+        resultAngle = 0;
+        float leftSideValDanger = getLeftSideAngleValues(true);
+        float rightSideValDanger = getRightSideAngleValues(true);
+
+        if (sumOfDangers > 1)
+        car.BrakeInput = ClutchObj.Remap(getAverageObstacleDistance(contextLookAheadDistance), contextLookAheadDistance*0.25f,contextLookAheadDistance, 1,0);
+
+        if (tiebreakerMode == true && Mathf.Abs(resultAngle) < 1 && sumOfDangers > 1)
+        {
+            if (steerDirection == 1)
+            {
+                resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
+                //car.BrakeInput = 1;
+            }
+            else
+            {
+                resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
+                //car.BrakeInput = 1;
+
+            }
+        }
+
+        if (tiebreakerMode == false && Mathf.Abs(leftSideValDanger - rightSideValDanger) < 1 && sumOfDangers > 1)
+        {
+            float leftSideVal = getLeftSideAngleValues();
+            float rightSideVal = getRightSideAngleValues();
+            if (leftSideVal > rightSideVal)
+            {
+                resultAngle = leftSideVal;
+                steerDirection = 0;
+            }
+            else
+            {
+                resultAngle = rightSideVal;
+                steerDirection = 1;
+            }
+            tiebreakerMode = true;
+            recordedSumOfDangers = sumOfDangers;
+        }
+        else
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                resultAngle += angles[i] * (interest[i] * (1 - danger[i]));
+            }
+            tiebreakerMode = false;
+        }
+
+
+
+
+
+
+
+            /**********************************************************************
+            for (int i = 0; i < 4; i++)
+            {
+                resultAngle += angles[i] * (interest[i] * (1-danger[i]));
+            }
+
+            if (tiebreakerMode == true && Mathf.Abs(resultAngle) < 1 && sumOfDangers > 1)
+            {
+                if (steerDirection == 1)
+                {
+                    resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
+                    car.BrakeInput = 1;
+                }
+                else
+                {
+                    resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
+                    car.BrakeInput = 1;
+
+                }
+            }
+
+            if (tiebreakerMode == false && danger[2] == 1 && sumOfDangers > 1)
+            {
+                if (Mathf.Abs(angles[0] * interest[0] + angles[1] * interest[1]) > Mathf.Abs(angles[2] * interest[2] + angles[3] * interest[3]))
+                {
+                    resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
+                    steerDirection = 0;
+                }
+                else
+                {
+                    resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
+                    steerDirection = 1;
+                }
+                tiebreakerMode = true;
+                recordedSumOfDangers = sumOfDangers;
+            }
+            if (sumOfDangers < recordedSumOfDangers)
+            {
+                tiebreakerMode = false;
+
+            }
+            */
+
+            resultAngle = Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle);
+        Vector3 resultDirection = Quaternion.Euler(0, resultAngle, 0) * transform.forward;
+        Debug.Log("Desired Direction is: " + resultAngle + " Degrees");
+        //Debug.DrawRay(transform.position, resultDirection, Color.black);
+        
+        return transform.position + resultDirection * 40f;
+    }
+
+    private void AIShiftToForwards()
+    {
+        if (car.gearBox.currentGear < 1)
+            car.gearBox.GearToFirst();
+
+    }
+
+    private void AIReverseMode()
+    {
+        if (reverseTime < 3)
+        {
+            car.steeringInput = 0;
+            if (car.gearBox.currentGear > 0)
+                car.gearBox.GearREVERSE();
+            car.Throttle = 1;
+            reverseTime += Time.deltaTime;
+
 
         }
-        resultAngle = 0;
-        for (int i = 0; i < 5; i++)
+        else
         {
-            resultAngle += angles[i] * interest[i];
+            isReversing = false;
+            reverseTime = 0;
+            timeUntilReverse = 0;
+            AIShiftToForwards();
         }
-        if (Mathf.Abs(resultAngle) > Mathf.Abs(car.clampedSteeringAngle))
+        // do below
+
+        // else
+        // isReversing = false;
+    }
+
+    float getLeftSideAngleValues(bool considerDanger = false)
+    {
+        float leftSideAngle = 0;
+        for (int i = 0; i < raycastHits.Length / 2; i++)
         {
-            car.BrakeInput = ClutchObj.Remap(Mathf.Abs(resultAngle) - Mathf.Abs(car.clampedSteeringAngle), 0, 4, 0, 1);
+            if (considerDanger)
+            {
+                leftSideAngle += angles[i] * (interest[i] * (1-danger[i]));
+            }
+            else
+            {
+                leftSideAngle += angles[i] * (interest[i] * (1-danger[i]));
+            }
         }
-        resultAngle = Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle);
-        //resultAngle = Mathf.Lerp(resultAngle, Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle), Time.deltaTime*0.5f);
-        Debug.Log("Desired Steer angle is: " + resultAngle + " Degrees");
-        return resultAngle;
+        return leftSideAngle;
+    }
+
+    float getRightSideAngleValues(bool considerDanger = false)
+    {
+        float rightSideAngle = 0;
+        for (int i = raycastHits.Length / 2; i < raycastHits.Length; i++)
+        {
+            if (considerDanger)
+            {
+                rightSideAngle += angles[i] * (interest[i] * (1 - danger[i]));
+            }
+            else
+            {
+                rightSideAngle += angles[i] * (interest[i] * (1 - danger[i]));
+            }
+        }
+        return rightSideAngle;
     }
     
-    
+    float getAverageObstacleDistance(float contextLookAheadDistance)
+    {
+        float averageDistance = 0;
+        for (int i = 0; i < raycastHits.Length; i++)
+        {
+            if (rayHits[i] == false)
+            {
+                averageDistance += contextLookAheadDistance / raycastHits.Length;
+            }
+            else
+            {
+                averageDistance += raycastHits[i].distance / raycastHits.Length;
+
+            }
+        }
+        return averageDistance;
+    }
+
+
 
     float calculateBrakeDistance(float desiredSpeed = 0)
     {
@@ -402,8 +588,8 @@ public class AICarController : MonoBehaviour
         // Vector3 point2 = lineToFollow[0].GetPoint(firstPointValuet); // A
         // Vector3 point3 = lineToFollow[0].GetPoint(firstPointValuet + 2 * (currentOffset / lineToFollow[0].length)); // C
 
-        Debug.DrawLine(car.transform.position, point2, Color.red);
-        Debug.DrawLine(car.transform.position, point3, Color.red);
+        //Debug.DrawLine(car.transform.position, point2, Color.red);
+        //Debug.DrawLine(car.transform.position, point3, Color.red);
 
         // Debug.DrawLine(car.transform.position, point1, Color.red);
         // Debug.DrawLine(car.transform.position, point3, Color.red);
@@ -690,6 +876,13 @@ public class AICarController : MonoBehaviour
 
         Debug.DrawLine(car.transform.position, closestPointSteerToLookAhead, Color.cyan);
 
+    }
+
+    public void respawnVehicle()
+    {
+        transform.position = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out float closestT, 95);
+        transform.rotation = Quaternion.LookRotation(lineToFollow[currentSpline].GetTangent(closestT), Vector3.up);
+        
     }
 
     // IEnumerator TimeToStop()

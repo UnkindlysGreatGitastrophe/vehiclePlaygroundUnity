@@ -29,6 +29,7 @@ public class CarObj : MonoBehaviour
 
     [Header("References")]
     public EngineObj engine;
+    public AICarController splineManager;
     public ForcedInductionObj induction;
     public ClutchObj clutch;
     public GearBoxObj gearBox;
@@ -63,7 +64,7 @@ public class CarObj : MonoBehaviour
     [Header("Input")]
 
     [Tooltip("The gas pedal!, 0 = no throttle, 1 = full throttle")]
-    public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
+    [Monitor] public float Throttle; // 0-1, 0 is no throttle, 1 is full throttle
 
     [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
     [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
@@ -221,6 +222,7 @@ public class CarObj : MonoBehaviour
         rb = GetComponent<Rigidbody>(); // Get the RigidBody Component of car
         meshDeform = GetComponent<MeshesDeformation>();
         differential = transform.GetComponentsInChildren<DifferentialObj>(); // Get Differential
+        splineManager = transform.GetComponent<AICarController>();
         LookPoint = transform.Find("LookPoint").GetComponent<Transform>();
 
 
@@ -453,6 +455,10 @@ public class CarObj : MonoBehaviour
         {
             Time.timeScale = 0.1f;
         }
+        if (Input.GetKey(KeyCode.T))
+        {
+            splineManager.respawnVehicle();
+        }
 
 
 
@@ -481,9 +487,15 @@ public class CarObj : MonoBehaviour
         {
             eBrakeInput = 0;
             allowBarrelRoll = false;
-
         }
 
+        if (isCarMidAir() && Input.GetKey(KeyCode.Space) && (Input.GetAxisRaw("Horizontal") != 0 || Input.GetAxisRaw("Vertical") != 0) )
+        {
+            PIDengaged = false;
+            PIDstrength = 0;
+        }
+
+        // Input that manages Nitro
         if (Input.GetKey(KeyCode.LeftShift) && nitroSystem.nitroDelay == 0 && status == CarStatus.RUNNING)
         {
             nitroSystem.nitroOn = true;
@@ -521,22 +533,10 @@ public class CarObj : MonoBehaviour
         {
             if (gearBox.Transmissiontype == GearBoxObj.GearboxType.MANUAL) // Manual Transmissions operate as normal
             {
-                if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-                {
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-                    }
-                }
                 if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
                 {
-                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-                    }
+                    Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * gearBox.throttleMultiplier, 0, 1);
+
                 }
                 else if (gearBox.gearEngaged == true)
                 {
@@ -546,12 +546,6 @@ public class CarObj : MonoBehaviour
                 if (Input.GetAxisRaw("Vertical") == -1) // Brakes, operate independently of gearbox
                 {
                     BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);
-                    if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                    {
-                        PIDengaged = false;
-                        PIDstrength = 0;
-
-                    }
                 }
                 else
                 {
@@ -562,23 +556,10 @@ public class CarObj : MonoBehaviour
             {
                 if (!AutoReverseMode)
                 {
-                    if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-                    {
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-                        }
-                    }
+
                     if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Operate as normal if we aren't in reverse mode for automatics
                     {
-                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-
-                        }
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * gearBox.throttleMultiplier, 0, 1);
                     }
                     else if (gearBox.gearEngaged == true)
                     {
@@ -587,58 +568,31 @@ public class CarObj : MonoBehaviour
 
                     if (Input.GetAxisRaw("Vertical") == -1)
                     {
-                        BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);   // Otherwise, swap the controls so that gas is brakes
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-
-                        }
+                        BrakeInput = Mathf.Clamp(BrakeInput + Time.fixedDeltaTime, 0, 1);
+                        //BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);   // Otherwise, swap the controls so that gas is brakes
                     }
                     else
                     {
-                        BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
+                        BrakeInput = Mathf.Clamp(BrakeInput - Time.fixedDeltaTime, 0, 1);
+                        //BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
                     }
                 }
                 else
                 {
-                    if (Input.GetAxisRaw("Horizontal") != 0) // Acceleration of engine, also assumes gearbox is engaged, otherwise we let the gearbox script handle throttle when shifting gears
-                    {
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-                        }
-                    }
                     if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
                     {
-                        BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-
-                        }
+                        BrakeInput = Mathf.Clamp(BrakeInput + Time.fixedDeltaTime, 0, 1);
+                        //BrakeInput = Mathf.Lerp(BrakeInput, 1, 8 * Time.deltaTime);
                     }
                     else if (gearBox.gearEngaged == true)
                     {
-                        BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-                        }
+                        BrakeInput = Mathf.Clamp(BrakeInput - Time.fixedDeltaTime, 0, 1);
+                        //BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
                     }
 
                     if (Input.GetAxisRaw("Vertical") == -1)
                     {
-                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
-                        if (isCarMidAir() && Input.GetKey(KeyCode.Space))
-                        {
-                            PIDengaged = false;
-                            PIDstrength = 0;
-
-                        }
+                        Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * gearBox.throttleMultiplier, 0, 1);
                     }
                     else
                     {
@@ -646,6 +600,27 @@ public class CarObj : MonoBehaviour
                     }
 
                 }
+
+
+
+
+                    // if (Input.GetAxisRaw("Vertical") == 1 && gearBox.gearEngaged == true) // Similiar to how throttle button is handled but is vice versa for brakes
+                    // {
+                    //     BrakeInput = Mathf.Clamp(BrakeInput + ((float) AutoReverseMode * Time.fixedDeltaTime) , 0, 1);
+                    // }
+                    // else if (gearBox.gearEngaged == true)
+                    // {
+                    //     BrakeInput = Mathf.Lerp(BrakeInput, 0, 16 * Time.deltaTime);
+                    // }
+
+                    // if (Input.GetAxisRaw("Vertical") == -1)
+                    // {
+                    //     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * 1, 0, 1);
+                    // }
+                    // else
+                    // {
+                    //     Throttle = Mathf.Clamp(Throttle + Time.fixedDeltaTime * -3, 0, 1);
+                    // }
 
             }
         }
@@ -655,7 +630,7 @@ public class CarObj : MonoBehaviour
 
     void HandleThrottleLock()
     {
-        if (Input.GetKeyDown(KeyCode.T))
+        if (Input.GetKeyDown(KeyCode.L))
         {
             ThrottleLock = !ThrottleLock; // Note that throttle lock set to true brakes throttle when shifting
         }
@@ -1131,6 +1106,8 @@ public class CarObj : MonoBehaviour
         dirtOverlay = Mathf.Clamp(dirtOverlay + Mathf.Clamp(carSpeed / velocityThreshold, 0, 1) * +dirtBuildupRate * Time.deltaTime, 0, 1);
         dirtmaterial.SetFloat("_DirtVisibility", dirtOverlay);
     }
+
+
 
     #endregion
 
