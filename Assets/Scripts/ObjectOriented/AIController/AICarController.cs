@@ -75,6 +75,11 @@ public class AICarController : MonoBehaviour
     private bool isReversing;
     private float reverseTime;
 
+    [Header("Laptime Tracking")]
+    int minimumSplinesTraveresed;
+    public List<BezierSpline> uniqueSplinesTraveresed;
+
+
     private void OnValidate()
     {
         maxNitroDeactivationPerLevel = 1 / (car.nitroSystem.maxOverBoostPenalty - 1);
@@ -132,6 +137,10 @@ public class AICarController : MonoBehaviour
         lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out float closestT, 95);
         if (!lineToFollow[currentSpline].loop && closestT > 0.99f && findNearestSpline)
         {
+            if (!uniqueSplinesTraveresed.Contains(lineToFollow[currentSpline]))
+            {
+                uniqueSplinesTraveresed.Add(lineToFollow[currentSpline]);
+            }
             SearchForAlternateSpline();
         }
 
@@ -882,7 +891,6 @@ public class AICarController : MonoBehaviour
     {
         transform.position = lineToFollow[currentSpline].FindNearestPointTo(car.transform.position, out float closestT, 95);
         transform.rotation = Quaternion.LookRotation(lineToFollow[currentSpline].GetTangent(closestT), Vector3.up);
-        
     }
 
     // IEnumerator TimeToStop()
