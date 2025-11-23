@@ -23,7 +23,7 @@ public class MeshesDeformation : MonoBehaviour
     public float maxHealth = 50f;
 
 
-    private void Start()
+    private void Awake()
     {
         deformableObjectsList = new GameObject[deformableObjects.transform.childCount];
         meshFilters = new MeshFilter[deformableObjects.transform.childCount];

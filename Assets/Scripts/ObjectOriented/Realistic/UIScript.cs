@@ -41,6 +41,9 @@ public class UIScript : MonoBehaviour
     public float healthMaxFillUIOffset = 0.428f;
     public float healthMinFillUIOffset = 0.33f;
 
+    [Header("Lap Indicator")]
+    public TextMeshProUGUI lapIndicatorText;
+
 
 
     [Header("Stunt UI")]
@@ -73,6 +76,12 @@ public class UIScript : MonoBehaviour
         updateSpeedoMeter();
         updateBoostGauge();
         updateHealthGauge();
+        //updateLapIndicator();
+    }
+
+    private void updateLapIndicator()
+    {
+        lapIndicatorText.text = "Lap " + car.splineManager.lapsCovered.ToString();
     }
 
     void updateRPMReader()
@@ -214,10 +223,17 @@ public class UIScript : MonoBehaviour
         
     }
 
-    public static float Remap (float input, float rangeMin, float rangeEnd, float newRangeMin,  float newRangeEnd)
+    public static float Remap(float input, float rangeMin, float rangeEnd, float newRangeMin, float newRangeEnd)
     {
         float t = Mathf.InverseLerp(rangeMin, rangeEnd, input);
         float output = Mathf.Lerp(newRangeMin, newRangeEnd, t);
         return output;
     }
+    
+    // public void getPosition()
+    // {
+    //     //for (int i = 0; i < RaceManager.racers.length; i++)
+
+    //     // Idea is to iterate over every racer, calculate spline progress, and order/update based on that, for now it is placeholder
+    // }
 }

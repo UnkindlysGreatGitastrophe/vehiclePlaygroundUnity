@@ -77,9 +77,9 @@ public class CarObj : MonoBehaviour
 
     public float PIDstrength = 1;
     [Tooltip("The direction of which the car turns is determined by this variable, Range is -1 <= steeringInput <= 1, (-1 is left, 0 is straight, 1 is right)")]
-    public float steeringInput; // -1 to 1, left is -1, 0 is straight, 1 is right
+    [Monitor] public float steeringInput; // -1 to 1, left is -1, 0 is straight, 1 is right
     [Tooltip("The maximum steering angle a car can do in a given situation, inversely affected by top speed for smooth driving at speeds")]
-    public float clampedSteeringAngle; // The maximum steering angle a car can do when under speed or spinning out\
+    [Monitor] public float clampedSteeringAngle; // The maximum steering angle a car can do when under speed or spinning out\
     [Tooltip("The maximum steering angle a car can possibly do")]
     public float maxSteeringAngle = 35f; // When the car is slow enough, or spinning out, this is as far as the wheels can turns
     [Tooltip("The minimum steering angle a car can possibly do")]
@@ -168,7 +168,7 @@ public class CarObj : MonoBehaviour
     // Start is called before the first frame update
     [Tooltip("Measured in KM/H")]
     //[Monitor]
-    [Monitor] public float carSpeed = 0; // Measured in KM/H
+    public float carSpeed = 0; // Measured in KM/H
     [Tooltip("Average Slip Angle of rear wheels")]
     public float avgBackSlipAngle; // Average Back Slip Angles
     [Tooltip("Average Slip Ratio of rear wheels")]
@@ -305,6 +305,19 @@ public class CarObj : MonoBehaviour
 
     void FixedUpdate()
     {
+        
+        if (Input.GetKey(KeyCode.Z))
+        {
+            Time.timeScale = 1;
+        }
+        if (Input.GetKey(KeyCode.X))
+        {
+            Time.timeScale = 0.5f;
+        }
+        if (Input.GetKey(KeyCode.C))
+        {
+            Time.timeScale = 0.1f;
+        }
         // Handle Input Here:
         if (!isAIPowered)
             GetInput();
@@ -443,18 +456,6 @@ public class CarObj : MonoBehaviour
     {
         // DEBUGGING
 
-        if (Input.GetKey(KeyCode.Z))
-        {
-            Time.timeScale = 1;
-        }
-        if (Input.GetKey(KeyCode.X))
-        {
-            Time.timeScale = 0.5f;
-        }
-        if (Input.GetKey(KeyCode.C))
-        {
-            Time.timeScale = 0.1f;
-        }
         if (Input.GetKey(KeyCode.T))
         {
             splineManager.respawnVehicle();
@@ -643,7 +644,7 @@ public class CarObj : MonoBehaviour
     void GetSpeedBasedSteerAngle() // Limits steering angle in accordance with the amount of speed the car has achieved
     {
         //clampedSteeringAngle = Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle); // Clamp the steering angle with the minimum and maximmum, rate of k determines how quick the angle is limited
-        clampedSteeringAngle = Mathf.MoveTowards(clampedSteeringAngle, Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle), 1 * Time.deltaTime);
+        clampedSteeringAngle = Mathf.MoveTowards(clampedSteeringAngle, Mathf.Clamp(maxSteeringAngle * (1.0f / (1.0f + Mathf.Abs(carSpeed) * k)), minSteeringAngle, maxSteeringAngle), 6 * Time.deltaTime);
         avgBackSlipAngle = 0; // Also consider the slip angle of the rear tires, if a spinout is to occur, we should increase steering angle to accomodate
         for (int i = 2; i < wheels.Length; i++) // Take the average slip angle here
         {

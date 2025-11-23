@@ -19,13 +19,13 @@ public class NitroObj : MonoBehaviour
     public float airNitroCoolRate = 2; // The rate of which the heating of the nitro decreases as the nitro is disengaged while in mid-air
     public float maxOverBoostPenalty = 3; // In seconds, this determines the amount of time a car can spend overboosting before it explodes
     public float nitroValue = 0; // From a range of 0 (No nitro use) to 1 (Overheating), this variable determines how hot the nitro temperature is
-    [Monitor] internal float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
+    internal float nitroOverBoostValue = 0; // From a range of 0 (Not overboosting) to the maxOverBoostPenalty (Car explodes from overboosting), this variable determines how much overboosting a player is doing
     public bool isOverBoosting; // Determines if the car is in the overboost zone
     internal bool nitroDelayInit; // Used to initialize delays after the player stops using nitro
     public bool nitroOn; // Indicates if the nitro is being used or not
     public float boostStuntMultiplier = 1;
 
-    [Monitor] public float AIoverBoostDisengageValue = 0.5f;
+    public float AIoverBoostDisengageValue = 0.5f;
 
     public float kineticBoost = 1500f;
     public float kineticBoostMultiplier = 3.5f;

@@ -14,12 +14,28 @@ public class CarCameraScript : MonoBehaviour
 
     public CinemachineTransposer.BindingMode midaircam = CinemachineTransposer.BindingMode.SimpleFollowWithWorldUp;
     public CarObj car;
+    CinemachineTransposer sameAsFollowTarget;
+    CinemachineBasicMultiChannelPerlin noise; // INEFFICIENT???
+
 
 
     // Start is called before the first frame update
     void Start()
     {
         cinemachineBrain = this.GetComponent<CinemachineBrain>();
+        Transform CarBodyFolder = car.transform.Find("DeformableObjects");
+        sameAsFollowTarget = groundVCam.GetCinemachineComponent<CinemachineTransposer>(); // INEFFICIENT???
+        noise = groundVCam.GetCinemachineComponent<CinemachineBasicMultiChannelPerlin>(); // INEFFICIENT???
+        foreach (Transform child in CarBodyFolder)
+        {
+            if (child.name.Contains("Body"))
+            {
+                groundVCam.m_Follow = child;
+                groundVCam.m_LookAt = child;
+                airVCam.m_Follow = child;
+                airVCam.m_LookAt = child;
+            }
+        }
     }
 
     // Update is called once per frame
@@ -31,8 +47,6 @@ public class CarCameraScript : MonoBehaviour
 
     private void cameraBehaviour()
     {
-        var sameAsFollowTarget = groundVCam.GetCinemachineComponent<CinemachineTransposer>();
-        var noise = groundVCam.GetCinemachineComponent<CinemachineBasicMultiChannelPerlin>();
         noise.m_AmplitudeGain = Mathf.Clamp((car.carSpeed - minSpeedAmp) / maxSpeedAmp * maxAmpGain, minAmpGain, maxAmpGain);
         noise.m_FrequencyGain = Mathf.Clamp((car.carSpeed - minSpeedFreq) / maxSpeedFreq * maxFreqGain, minFreqGain, maxFreqGain);
 

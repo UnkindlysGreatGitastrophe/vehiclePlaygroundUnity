@@ -6,19 +6,21 @@ using System.Collections;
 using System;
 using Unity.VisualScripting.FullSerializer;
 
+
+[DefaultExecutionOrder(1)]
+
 public class AICarController : MonoBehaviour
 {
-
     [Header("References")]
     public CarObj car;
     public BezierSpline[] lineToFollow;
 
     float normalizedT;
     public float currentOffset = 10;
-    [Monitor] private float maxCornerSpeed;
-    [Monitor] private float steeringLookAheadDistance;
+    private float maxCornerSpeed;
+    private float steeringLookAheadDistance;
     private float maxBrakeDistance;
-    [Monitor] private float lookAheadDistance;
+    private float lookAheadDistance;
     private Vector3 closestPointToLookAhead;
     public float minLookAheadDist = 5;
     public float maxLookAheadDist = 50;
@@ -60,25 +62,25 @@ public class AICarController : MonoBehaviour
 
     [Header("Context Steering")]
 
-    float cSLookahead = 100;
-    [Monitor] private float resultAngle;
-    [Monitor] float[] interest;
+    private float resultAngle;
+    float[] interest;
     float[] danger;
     bool[] rayHits;
-    float[] angles;
+    [Monitor] float[] angles;
     RaycastHit[] raycastHits;
     private bool tiebreakerMode;
     private float recordedSumOfDangers;
     private int steerDirection;
     private float angleTest;
-    [Monitor] private float timeUntilReverse;
+    private float timeUntilReverse;
     private bool isReversing;
     private float reverseTime;
 
     [Header("Laptime Tracking")]
-    int minimumSplinesTraveresed;
+    public int minimumSplinesTraveresed;
     public List<BezierSpline> uniqueSplinesTraveresed;
-
+    public List<BezierSpline> requiredSplines;
+    public int lapsCovered = 0;
 
     private void OnValidate()
     {
@@ -89,7 +91,7 @@ public class AICarController : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        this.StartMonitoring();
+        //this.StartMonitoring();
         interest = new float[4];
         raycastHits = new RaycastHit[4];
         rayHits = new bool[4];
@@ -117,9 +119,9 @@ public class AICarController : MonoBehaviour
             float d = maxAngularVelocity[i] * 0.93f / 0.8f;
             float a = 1f - car.rb.angularDrag * Time.fixedDeltaTime;
             timeToStop[i] = -Time.fixedDeltaTime * (Mathf.Floor(Mathf.Log(d) / Mathf.Log(a)) - 2);
-            Debug.Log(timeToStop);
+            //Debug.Log(timeToStop);
             angularDisplacement[i] = 0.5f * maxAngularVelocity[i] * timeToStop[i];
-            Debug.Log(angularDisplacement);
+            //Debug.Log(angularDisplacement);
         }
 
     }
@@ -149,6 +151,19 @@ public class AICarController : MonoBehaviour
             NormalDriving2();
         }
 
+        if (uniqueSplinesTraveresed.Count >= minimumSplinesTraveresed)
+        {
+            for (int i = 0; i < requiredSplines.Count; i++)
+            {
+                if (!uniqueSplinesTraveresed.Contains(requiredSplines[i]))
+                {
+                    break;
+                }
+            }
+            lapsCovered++;
+            uniqueSplinesTraveresed.Clear();
+        }
+
 
 
     }
@@ -157,61 +172,61 @@ public class AICarController : MonoBehaviour
     {
         if (car.isAIPowered)
         {
-                    AINitroBehaviour();
-        if (car.isCarMidAir())
-        {
-            TrackStunts();
-            lastRotation = car.rb.rotation;
-            getDistanceFromGround();
-            stuntTime = getTimeToHitGround();
-            car.PIDengaged = false;
-
-            // List<int> stuntsOrientation = new List<int>();
-            // for (int i = 0; i < 3; i++)
-            // {
-            //     if (stuntTime > timeToFlip + timeToStop[i])
-            //     {
-            //         stuntsOrientation.Add(i);
-            //     }
-
-            //     // This formula comes from solving the differential equation for deceleration.
-            //     // It assumes no external torque is applied during this time.
-            //     TrackStunts();
-            // }
-            // if (stuntsOrientation.Count > 0)
-            // {
-            if (myRunningCoroutine == null && stuntTime > estimatedTimeToFlip)
+            AINitroBehaviour();
+            if (car.isCarMidAir())
             {
+                TrackStunts();
+                lastRotation = car.rb.rotation;
+                getDistanceFromGround();
+                stuntTime = getTimeToHitGround();
+                car.PIDengaged = false;
 
-                //offset = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
-                totalRotation.x = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
-                myRunningCoroutine = StartCoroutine(ProvideSpinTest2(stuntsCount, chosenDirection));
-            }
-            else if (myRunningCoroutine == null && car.isCarMidAir() && stuntTime < estimatedTimeToFlip)
-            {
-                engageStabilization();
-            }
-        }
-        else
-        {
-            if (randomDirectionChoice)
-                chosenDirection = UnityEngine.Random.Range(0, 3);
-            totalRotation = Vector3.zero;
-            if (!car.PIDengaged)
-            {
-                for (int i = 0; i < car.wheels.Length; i++)
+                // List<int> stuntsOrientation = new List<int>();
+                // for (int i = 0; i < 3; i++)
+                // {
+                //     if (stuntTime > timeToFlip + timeToStop[i])
+                //     {
+                //         stuntsOrientation.Add(i);
+                //     }
+
+                //     // This formula comes from solving the differential equation for deceleration.
+                //     // It assumes no external torque is applied during this time.
+                //     TrackStunts();
+                // }
+                // if (stuntsOrientation.Count > 0)
+                // {
+                if (myRunningCoroutine == null && stuntTime > estimatedTimeToFlip)
                 {
-                    float previousGrip = car.wheels[i].tireGripFactor;
-                    car.wheels[i].tireGripFactor = 0;
-                    StartCoroutine(car.wheels[i].disengageGrip(previousGrip));
-                    car.Throttle = 0;
 
+                    //offset = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
+                    totalRotation.x = Mathf.DeltaAngle(0, lastRotation.eulerAngles.x);
+                    myRunningCoroutine = StartCoroutine(ProvideSpinTest2(stuntsCount, chosenDirection));
+                }
+                else if (myRunningCoroutine == null && car.isCarMidAir() && stuntTime < estimatedTimeToFlip)
+                {
+                    engageStabilization();
                 }
             }
-            car.PIDengaged = true;
+            else
+            {
+                if (randomDirectionChoice)
+                    chosenDirection = UnityEngine.Random.Range(0, 3);
+                totalRotation = Vector3.zero;
+                if (!car.PIDengaged)
+                {
+                    for (int i = 0; i < car.wheels.Length; i++)
+                    {
+                        float previousGrip = car.wheels[i].tireGripFactor;
+                        car.wheels[i].tireGripFactor = 0;
+                        StartCoroutine(car.wheels[i].disengageGrip(previousGrip));
+                        car.Throttle = 0;
+
+                    }
+                }
+                car.PIDengaged = true;
 
 
-        }
+            }
 
         }
 
@@ -266,13 +281,13 @@ public class AICarController : MonoBehaviour
 
 
         float angleXZ = Mathf.Atan2(localDirection.x, localDirection.z) * Mathf.Rad2Deg;
-        angleTest = Mathf.Lerp(angleTest, angleXZ, 10*Time.deltaTime);
-        //print("Steering Angle: " + angleXZ + " Degrees");
-        car.steeringInput = Mathf.Sign(car.carSpeed)*ClutchObj.Remap(angleTest, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1);
+        angleTest = Mathf.Lerp(angleTest, angleXZ, 10 * Time.deltaTime);
+        print("Steering Angle: " + angleXZ + " Degrees");
+        car.steeringInput = Mathf.Sign(car.carSpeed) * ClutchObj.Remap(angleTest, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1);
         //car.steeringInput = Mathf.Lerp(car.steeringInput, ClutchObj.Remap(resultSteer, -car.clampedSteeringAngle, car.clampedSteeringAngle, -1, 1),Time.deltaTime*2);
 
 
-        if (car.carSpeed < 10)
+        if (car.carSpeed < 10 && !car.isCarMidAir())
         {
             timeUntilReverse += Time.deltaTime;
             if (timeUntilReverse > 3f)
@@ -391,7 +406,7 @@ public class AICarController : MonoBehaviour
         float rightSideValDanger = getRightSideAngleValues(true);
 
         if (sumOfDangers > 1)
-        car.BrakeInput = ClutchObj.Remap(getAverageObstacleDistance(contextLookAheadDistance), contextLookAheadDistance*0.25f,contextLookAheadDistance, 1,0);
+            car.BrakeInput = ClutchObj.Remap(getAverageObstacleDistance(contextLookAheadDistance), contextLookAheadDistance * 0.25f, contextLookAheadDistance, 1, 0);
 
         if (tiebreakerMode == true && Mathf.Abs(resultAngle) < 1 && sumOfDangers > 1)
         {
@@ -408,7 +423,7 @@ public class AICarController : MonoBehaviour
             }
         }
 
-        if (tiebreakerMode == false && Mathf.Abs(leftSideValDanger - rightSideValDanger) < 1 && sumOfDangers > 1)
+        else if (tiebreakerMode == false && Mathf.Abs(leftSideValDanger - rightSideValDanger) < 1 && sumOfDangers > 1)
         {
             float leftSideVal = getLeftSideAngleValues();
             float rightSideVal = getRightSideAngleValues();
@@ -440,54 +455,54 @@ public class AICarController : MonoBehaviour
 
 
 
-            /**********************************************************************
-            for (int i = 0; i < 4; i++)
-            {
-                resultAngle += angles[i] * (interest[i] * (1-danger[i]));
-            }
+        /**********************************************************************
+        for (int i = 0; i < 4; i++)
+        {
+            resultAngle += angles[i] * (interest[i] * (1-danger[i]));
+        }
 
-            if (tiebreakerMode == true && Mathf.Abs(resultAngle) < 1 && sumOfDangers > 1)
+        if (tiebreakerMode == true && Mathf.Abs(resultAngle) < 1 && sumOfDangers > 1)
+        {
+            if (steerDirection == 1)
             {
-                if (steerDirection == 1)
-                {
-                    resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
-                    car.BrakeInput = 1;
-                }
-                else
-                {
-                    resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
-                    car.BrakeInput = 1;
-
-                }
+                resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
+                car.BrakeInput = 1;
             }
-
-            if (tiebreakerMode == false && danger[2] == 1 && sumOfDangers > 1)
+            else
             {
-                if (Mathf.Abs(angles[0] * interest[0] + angles[1] * interest[1]) > Mathf.Abs(angles[2] * interest[2] + angles[3] * interest[3]))
-                {
-                    resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
-                    steerDirection = 0;
-                }
-                else
-                {
-                    resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
-                    steerDirection = 1;
-                }
-                tiebreakerMode = true;
-                recordedSumOfDangers = sumOfDangers;
-            }
-            if (sumOfDangers < recordedSumOfDangers)
-            {
-                tiebreakerMode = false;
+                resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
+                car.BrakeInput = 1;
 
             }
-            */
+        }
 
-            resultAngle = Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle);
+        if (tiebreakerMode == false && danger[2] == 1 && sumOfDangers > 1)
+        {
+            if (Mathf.Abs(angles[0] * interest[0] + angles[1] * interest[1]) > Mathf.Abs(angles[2] * interest[2] + angles[3] * interest[3]))
+            {
+                resultAngle = (angles[0] * interest[0]) + (angles[1] * interest[1]);
+                steerDirection = 0;
+            }
+            else
+            {
+                resultAngle = (angles[2] * interest[2]) + (angles[3] * interest[3]);
+                steerDirection = 1;
+            }
+            tiebreakerMode = true;
+            recordedSumOfDangers = sumOfDangers;
+        }
+        if (sumOfDangers < recordedSumOfDangers)
+        {
+            tiebreakerMode = false;
+
+        }
+        */
+
+        resultAngle = Mathf.Clamp(resultAngle, -car.clampedSteeringAngle, car.clampedSteeringAngle);
         Vector3 resultDirection = Quaternion.Euler(0, resultAngle, 0) * transform.forward;
-        Debug.Log("Desired Direction is: " + resultAngle + " Degrees");
+        //Debug.Log("Desired Direction is: " + resultAngle + " Degrees");
         //Debug.DrawRay(transform.position, resultDirection, Color.black);
-        
+
         return transform.position + resultDirection * 40f;
     }
 
@@ -530,11 +545,11 @@ public class AICarController : MonoBehaviour
         {
             if (considerDanger)
             {
-                leftSideAngle += angles[i] * (interest[i] * (1-danger[i]));
+                leftSideAngle += angles[i] * (interest[i] * (1 - danger[i]));
             }
             else
             {
-                leftSideAngle += angles[i] * (interest[i] * (1-danger[i]));
+                leftSideAngle += angles[i] * (interest[i] * (1 - danger[i]));
             }
         }
         return leftSideAngle;
@@ -556,7 +571,7 @@ public class AICarController : MonoBehaviour
         }
         return rightSideAngle;
     }
-    
+
     float getAverageObstacleDistance(float contextLookAheadDistance)
     {
         float averageDistance = 0;
@@ -758,7 +773,7 @@ public class AICarController : MonoBehaviour
                 if (stuntsCount[0] != prevStunts[0])
                 {
                     myRunningCoroutine = null;
-                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    //Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
                     yield break;
 
                 }
@@ -771,7 +786,7 @@ public class AICarController : MonoBehaviour
                 if (stuntsCount[1] != prevStunts[1])
                 {
                     myRunningCoroutine = null;
-                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    //Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
                     yield break;
                 }
                 yield return null;
@@ -783,7 +798,7 @@ public class AICarController : MonoBehaviour
                 if (stuntsCount[2] != prevStunts[2])
                 {
                     myRunningCoroutine = null;
-                    Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
+                    //Debug.Log("Time to complete stunt: " + (Time.time - initialTime));
                     yield break;
                 }
                 yield return null;
@@ -893,6 +908,8 @@ public class AICarController : MonoBehaviour
         transform.rotation = Quaternion.LookRotation(lineToFollow[currentSpline].GetTangent(closestT), Vector3.up);
     }
 
+
+
     // IEnumerator TimeToStop()
     // {
 
@@ -915,7 +932,7 @@ public class AICarController : MonoBehaviour
     //     Debug.Log("Time to reach "+ (maxAngularVelocity - (1-rb.angularDrag*Time.fixedDeltaTime)) + ": " + (Time.time - initialTime));
     // }
 
-    
+
 
 
 }

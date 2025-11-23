@@ -62,7 +62,7 @@ public class WheelObj : MonoBehaviour
 
 
     [Header("Lateral Variables")]
-    [Monitor] public float steeringAngle;
+    public float steeringAngle;
 
     public float lateralForce;
     public float slipAngle;
@@ -101,7 +101,7 @@ public class WheelObj : MonoBehaviour
     // Start is called before the first frame update
     void Start()
     {
-        this.StartMonitoring();
+        //this.StartMonitoring();
         if (transform.parent.GetComponent<CarObj>() != null)
         {
             car = transform.parent.GetComponent<CarObj>();
