@@ -51,6 +51,11 @@ public class WheelObj : MonoBehaviour
     [Header("Wheel Vectors")]
 
     public Vector3 localVelocity; // M/S
+    public Vector2 DifferentialSlip;
+
+    public Vector2 Slip;
+    public Vector2 RelaxationLength = new Vector2(0.12f,0.12f);
+
 
     [Header("Longitudinal Variables")]
     public float longitudinalForce; // Newtons -> kg*m/s^2
@@ -72,7 +77,7 @@ public class WheelObj : MonoBehaviour
     float differentialTanSlipAngle = 0.0f;
 
     // Relaxation lengths
-    float relLenLongitudinal = 0.08f;
+    float relLenLongitudinal = 0.12f;
     float relLenLateral = 0.16f;
 
 
@@ -97,6 +102,9 @@ public class WheelObj : MonoBehaviour
     [SerializeField]
     private ParticleMap[] pM;
     private bool onDirt = false;
+
+
+
 
     // Start is called before the first frame update
     void Start()
@@ -223,6 +231,32 @@ public class WheelObj : MonoBehaviour
         }
     }
 
+        public void applyWheelForces2()
+    {
+        //We must modifiy the Lateral and longitudinal forces so that it does not exceed FZ * coefficient of friction for the tire, 
+        if (Slip.x != 0 && Slip.y != 0)
+        {
+            longitudinalForce = longitudinalForce * (Mathf.Abs(slipRatio / 100) / Mathf.Sqrt(Mathf.Pow(slipRatio / 100, 2) + Mathf.Pow(slipAngle * Mathf.Deg2Rad, 2)));
+            lateralForce = lateralForce * (Mathf.Abs(slipAngle * Mathf.Deg2Rad) / Mathf.Sqrt(Mathf.Pow(slipRatio / 100, 2) + Mathf.Pow(slipAngle * Mathf.Deg2Rad, 2)));
+        }
+        else
+        {
+            longitudinalForce = 0;
+            lateralForce = 0;
+        }
+
+        carRigidBody.AddForceAtPosition(-transform.up * (car.downForce / 4), transform.position);
+
+        if (isHit)
+        {
+            carRigidBody.AddForceAtPosition(currentFriction * lateralForce * transform.right, transform.position);
+            carRigidBody.AddForceAtPosition((currentFriction * longitudinalForce * transform.forward)
+            //+ dragForce 
+            //+ rollResistance
+            , transform.position);
+        }
+    }
+
     public IEnumerator disengageGrip(float prevGripFactor)
     {
         while (tireGripFactor < prevGripFactor)
@@ -308,6 +342,39 @@ public class WheelObj : MonoBehaviour
             ReactionTorqueToWheel = 0;
     }
 
+        public void calculateLongitudinalForce2()
+    {
+        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        Speed = localVelocity.magnitude * 3.6f;
+        driveForce = PacejkaApprox(Slip.x, z_shape)
+        * tireGripFactor;
+        float resistanceCoefficient = 0.007f;
+        float rollResistanceForce = resistanceCoefficient * (forcePerTire.y);
+        longitudinalForce = driveForce
+        - rollResistanceForce
+        //divide your limiter rpm by gear ratio, convert it to angular velocity and if you divide it by tyre radius you get what you want == Max speed for a gear
+        /*
+            EXAMPLE:
+                    let's say you have a tyre of a radius of 0.45
+                    the circumference is more or less 2.8 meters - that means the tyre is traveling 2.8 meters per revolution
+                    max engine revs = 6800
+                    revolutions per minute
+                    divide that by 60 and you get around 113 revs per second
+                    then taking into account gear ratios the wheel rotates more or less 7.8 times a second
+                    2.8 meters per revolution, 7.8 revolutions per second - 22.3 meters per second
+                    multiply by 3.6 - 80 KMH
+                    that's the correct calculation
+        */
+        //
+        ;
+        Debug.DrawRay(transform.position, (longitudinalForce * transform.forward).normalized, Color.green);
+
+        if (isHit)
+            ReactionTorqueToWheel = -longitudinalForce * tireRadius; // 3rd law, needed for clutch!
+        else
+            ReactionTorqueToWheel = 0;
+    }
+
 
 
     public float PacejkaApprox(float slip, float t_shape) // This is from the godot tutorial
@@ -328,6 +395,54 @@ public class WheelObj : MonoBehaviour
         differentialSlipRatio = Mathf.Clamp(differentialSlipRatio, -Mathf.Abs(steadyStateSlipRatio), Mathf.Abs(steadyStateSlipRatio));
         return differentialSlipRatio;
     }
+
+    public void CalculateSlip()
+{
+    Vector2 contactPatchVelocity = new Vector2(localVelocity.z, localVelocity.x); //wheelForwardVelocity and wheelSideVelocity depends on the cooridinate system and must be relative to the wheel direction.
+
+    float rollingRadius = tireRadius;
+
+    // Slip velocity (X = longitudinal, Y = lateral)
+    Vector2 slipVelocity = new Vector2(
+        wheelAngularVelocity * rollingRadius - contactPatchVelocity.x,
+        contactPatchVelocity.y
+    );
+
+    // Longitudinal slip ratio
+    float velocityForwardAbs = Mathf.Max(Mathf.Abs(contactPatchVelocity.x), 0.5f); // You can fine tune 0.5f for your own needs
+
+    float steadyStateSlipRatio = slipVelocity.x / velocityForwardAbs;
+
+    float slipRatioDelta =
+        (slipVelocity.x - Mathf.Abs(velocityForwardAbs) * DifferentialSlip.x)
+        / RelaxationLength.x;
+
+    DifferentialSlip.x += slipRatioDelta * Time.fixedDeltaTime;
+    DifferentialSlip.x = Mathf.Clamp(
+        DifferentialSlip.x,
+        -Mathf.Abs(steadyStateSlipRatio),
+        Mathf.Abs(steadyStateSlipRatio)
+    );
+
+    Slip.x = DifferentialSlip.x;
+
+    // Lateral slip angle (tan slip)
+    float steadyStateSlipAngle =
+        Mathf.Atan2(contactPatchVelocity.y, velocityForwardAbs);
+
+    float tanSlipAngleDelta =
+        (steadyStateSlipAngle - Mathf.Abs(velocityForwardAbs) * DifferentialSlip.y)
+        / RelaxationLength.y;
+
+    DifferentialSlip.y += tanSlipAngleDelta * Time.fixedDeltaTime;
+    DifferentialSlip.y = Mathf.Clamp(
+        DifferentialSlip.y,
+        -Mathf.Abs(Mathf.Tan(steadyStateSlipAngle)),
+        Mathf.Abs(Mathf.Tan(steadyStateSlipAngle))
+    );
+
+    Slip.y = -DifferentialSlip.y;
+}
 
     public void applyTracControl()
     {
@@ -356,6 +471,13 @@ public class WheelObj : MonoBehaviour
         slipAngle = GetSlipAngle(wheelAngularVelocity, localVelocity.x);
         slipAngle = CalcSlipAngle();
         slipAngle = slipAngle * Mathf.Rad2Deg;
+        lateralForce = PacejkaApprox(slipAngle, x_shape) * tireGripFactor;
+    }
+
+    public void calculateLateralForce2()
+    {
+        localVelocity = transform.InverseTransformDirection(carRigidBody.GetPointVelocity(RaycastDir.point));
+        slipAngle = Slip.y * Mathf.Rad2Deg;
         lateralForce = PacejkaApprox(slipAngle, x_shape) * tireGripFactor;
     }
 

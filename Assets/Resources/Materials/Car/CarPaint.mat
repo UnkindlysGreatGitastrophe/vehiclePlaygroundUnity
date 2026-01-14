@@ -146,7 +146,7 @@ Material:
     - _ZWriteControl: 0
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
-    - _CarColor: {r: 1, g: 0, b: 0, a: 0}
+    - _CarColor: {r: 0, g: 0.15988421, b: 1, a: 0}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _Direction: {r: 0, g: -1, b: 0, a: 0}
     - _DirtColor: {r: 0.58431375, g: 0.48627448, b: 0.38039213, a: 1}

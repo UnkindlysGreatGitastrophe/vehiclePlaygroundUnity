@@ -69,7 +69,7 @@ public class CarObj : MonoBehaviour
     [Tooltip("The Brake pedal, 0 = no brakes, 1 = full brakes")]
     [Monitor] public float BrakeInput; // 0-1, 0 is no brakes, 1 is full brakes
     [Tooltip("The Spicy brake pedal, 0 = no handbrake, 1 = full handbrake")]
-    public float eBrakeInput; // 0-1, 0 is no handbrake, 1 is full hand brake
+    [Monitor] public float eBrakeInput; // 0-1, 0 is no handbrake, 1 is full hand brake
     [Tooltip("Toggles the ability to perform barrel rolls instead of flat spins")]
     public bool allowBarrelRoll; // Used to allow the car to do barrel rolls through Input(Horizontal)
     [Tooltip("Toggles the ability to use PID stabilization to counter body rolling in jumps")]
@@ -361,7 +361,11 @@ public class CarObj : MonoBehaviour
                 wheels[i].applyTorqueToWheels(0);
             wheels[i].calculateLongitudinalForce(); // Function for calculating longitudinal force based on Slip Ratio
             wheels[i].calculateLateralForce(); // Function for calculating lateral force based on Slip Angle
-            wheels[i].applyWheelForces(); // Function for applying a combination of Lateral and longitudinal force
+            wheels[i].applyWheelForces();
+            // wheels[i].CalculateSlip();
+            // wheels[i].calculateLongitudinalForce2(); // Function for calculating longitudinal force based on Slip Ratio
+            // wheels[i].calculateLateralForce2(); // Function for calculating lateral force based on Slip Angle
+            // wheels[i].applyWheelForces2(); // Function for applying a combination of Lateral and longitudinal force
         }
         float dragCoefficient = 0.353f; // might be a bit too much
         Vector3 dragForce = transform.TransformDirection(dragCoefficient * -currentVelocity * currentVelocity.magnitude);
