@@ -383,10 +383,10 @@ public class CarObj : MonoBehaviour
                     lastRotation = rb.rotation;
                     lastRotationPID = Vector3.ProjectOnPlane(rb.transform.forward, Vector3.up); // This is where initialization happens for rotations
                 }
-                if (PIDengaged)
-                {
-                    PID();
-                }
+                // if (PIDengaged)
+                // {
+                //     PID();
+                // }
                 AerialRotation();
                 TrackStunts();
                 rb.angularDrag = angularDragAir;
@@ -400,7 +400,7 @@ public class CarObj : MonoBehaviour
             {
                 if (!PIDengaged)
                 {
-                    for (int i = 0; i < wheels.Length; i++)
+                    for (int i = 0; i < wheels.Length/2; i++)
                     {
                         float previousGrip = wheels[i].tireGripFactor;
                         wheels[i].tireGripFactor = 0;
